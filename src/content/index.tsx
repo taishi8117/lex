@@ -19,6 +19,14 @@ async function init() {
   // Load saved settings
   await providerRegistry.loadFromStorage();
 
+  // Listen for settings changes (when user updates in options page)
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes.lex_provider_settings) {
+      console.log('[Lex Dictionary] Settings changed, reloading...');
+      providerRegistry.loadFromStorage();
+    }
+  });
+
   // Create shadow DOM host for style isolation
   createShadowHost();
 

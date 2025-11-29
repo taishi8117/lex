@@ -1,6 +1,6 @@
 import { providerRegistry } from './registry';
 import { FreeDictionaryProvider } from './free-dictionary';
-import { MerriamWebsterProvider } from './merriam-webster';
+import { MWCollegiateProvider, MWLearnersProvider } from './merriam-webster';
 import { JishoProvider } from './jisho';
 import { OpenAIProvider } from './openai';
 
@@ -10,7 +10,8 @@ import { OpenAIProvider } from './openai';
  */
 export function registerAllProviders(): void {
   providerRegistry.register(new FreeDictionaryProvider());
-  providerRegistry.register(new MerriamWebsterProvider());
+  providerRegistry.register(new MWCollegiateProvider());
+  providerRegistry.register(new MWLearnersProvider());
   providerRegistry.register(new JishoProvider());
   providerRegistry.register(new OpenAIProvider());
 }

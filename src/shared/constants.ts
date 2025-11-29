@@ -1,8 +1,6 @@
 // API Endpoints
 export const API_ENDPOINTS = {
   FREE_DICTIONARY: 'https://api.dictionaryapi.dev/api/v2/entries/en',
-  MERRIAM_WEBSTER: 'https://www.dictionaryapi.com/api/v3/references/collegiate/json',
-  MERRIAM_WEBSTER_LEARNERS: 'https://www.dictionaryapi.com/api/v3/references/learners/json',
   JISHO: 'https://jisho.org/api/v1/search/words',
   OPENAI: 'https://api.openai.com/v1/chat/completions',
 } as const;

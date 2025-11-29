@@ -79,7 +79,10 @@ export function Popup({ word, position, onClose }: PopupProps) {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (!target.closest('.lex-popup')) {
+      // Check if click is outside by seeing if it's on the main document
+      // (not inside our shadow DOM popup)
+      const isOutsideClick = !target.closest('#lex-dictionary-host');
+      if (isOutsideClick) {
         onClose();
       }
     };
@@ -91,15 +94,15 @@ export function Popup({ word, position, onClose }: PopupProps) {
       }
     };
 
-    // Delay adding listeners to prevent immediate close
+    // Delay adding listeners to prevent immediate close from the double-click
     const timeoutId = setTimeout(() => {
-      document.addEventListener('click', handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
-    }, 100);
+    }, 200);
 
     return () => {
       clearTimeout(timeoutId);
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
