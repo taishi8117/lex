@@ -52,7 +52,34 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return false;
 });
 
-// Handle extension icon click - open options page
-chrome.action.onClicked.addListener(() => {
-  chrome.runtime.openOptionsPage();
+// Handle extension icon click - look up selected text
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab.id) {
+    chrome.runtime.openOptionsPage();
+    return;
+  }
+
+  try {
+    // Execute script to get selected text from the page
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => window.getSelection()?.toString().trim() || '',
+    });
+
+    const selectedText = results?.[0]?.result;
+
+    if (selectedText) {
+      // Send message to content script to show popup
+      chrome.tabs.sendMessage(tab.id, {
+        type: 'LOOKUP_SELECTION',
+        text: selectedText,
+      });
+    } else {
+      // No selection - open options page
+      chrome.runtime.openOptionsPage();
+    }
+  } catch {
+    // If script injection fails (e.g., chrome:// pages), open options
+    chrome.runtime.openOptionsPage();
+  }
 });

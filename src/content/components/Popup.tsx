@@ -169,18 +169,75 @@ export function Popup({ word, position, context, onClose }: PopupProps) {
     [word, context]
   );
 
-  // Filter out sources with no results
+  // Check if AI provider is enabled
+  const aiProviderId = 'openai';
+  const aiRegistration = providerRegistry.getRegistration(aiProviderId);
+  const isAiEnabled = aiRegistration?.enabled ?? false;
+  const isAiLoading = loadingIds.has(aiProviderId);
+  const aiResult = results?.results.find((r) => r.providerId === aiProviderId);
+
+  // Filter out sources with no results, then sort by configured order
+  // AI provider is handled separately and always shown when enabled
   const visibleResults =
+    results?.results
+      .filter((r) => {
+        // AI is always shown separately when enabled
+        if (r.providerId === aiProviderId) return false;
+        return r.result.success && r.result.data.definitions.length > 0;
+      })
+      .sort((a, b) => {
+        const orderA = providerRegistry.getRegistration(a.providerId)?.order ?? 999;
+        const orderB = providerRegistry.getRegistration(b.providerId)?.order ?? 999;
+        return orderA - orderB;
+      }) || [];
+
+  // Build display items: regular results + AI slot (if enabled)
+  type DisplayItem =
+    | { type: 'result'; data: SourceLookupResult }
+    | { type: 'ai-loading' }
+    | { type: 'ai-error'; error: string }
+    | { type: 'ai-result'; data: SourceLookupResult };
+
+  const displayItems: DisplayItem[] = [];
+
+  // Add regular results
+  for (const r of visibleResults) {
+    displayItems.push({ type: 'result', data: r });
+  }
+
+  // Add AI item if enabled
+  if (isAiEnabled) {
+    if (isAiLoading) {
+      displayItems.push({ type: 'ai-loading' });
+    } else if (aiResult) {
+      if (aiResult.result.success && aiResult.result.data.definitions.length > 0) {
+        displayItems.push({ type: 'ai-result', data: aiResult });
+      } else if (!aiResult.result.success) {
+        displayItems.push({ type: 'ai-error', error: aiResult.result.error.message });
+      }
+      // If success but no definitions, don't show anything
+    }
+  }
+
+  // Sort all display items by provider order
+  const getItemOrder = (item: DisplayItem): number => {
+    if (item.type === 'result') {
+      return providerRegistry.getRegistration(item.data.providerId)?.order ?? 999;
+    }
+    // AI items use the AI provider order
+    return aiRegistration?.order ?? 999;
+  };
+  displayItems.sort((a, b) => getItemOrder(a) - getItemOrder(b));
+
+  // Get failed results for potential retry (excluding AI which is handled separately)
+  const failedResults =
     results?.results.filter(
-      (r) => r.result.success && r.result.data.definitions.length > 0
+      (r) => r.providerId !== aiProviderId && !r.result.success && r.result.error.retryable
     ) || [];
 
-  // Get failed results for potential retry
-  const failedResults =
-    results?.results.filter((r) => !r.result.success && r.result.error.retryable) || [];
-
   const allProvidersLoaded = loadingIds.size === 0;
-  const noResults = allProvidersLoaded && visibleResults.length === 0;
+  const hasVisibleContent = displayItems.length > 0;
+  const noResults = allProvidersLoaded && !hasVisibleContent;
 
   return (
     <div className={`lex-popup ${isDragging ? 'lex-popup--dragging' : ''}`} style={positionStyle} role="dialog" aria-label="Dictionary definitions">
@@ -199,7 +256,7 @@ export function Popup({ word, position, context, onClose }: PopupProps) {
 
       {/* Content */}
       <div className="lex-popup-content">
-        {loading && visibleResults.length === 0 && <AccordionSkeleton count={3} />}
+        {loading && !hasVisibleContent && <AccordionSkeleton count={3} />}
 
         {noResults && (
           <div className="lex-no-results">
@@ -218,41 +275,79 @@ export function Popup({ word, position, context, onClose }: PopupProps) {
           </div>
         )}
 
-        {visibleResults.length > 0 && (
+        {hasVisibleContent && (
           <Accordion>
-            {visibleResults.map((sourceResult) => (
-              <AccordionSection
-                key={sourceResult.providerId}
-                id={sourceResult.providerId}
-                title={sourceResult.providerName}
-                loading={loadingIds.has(sourceResult.providerId)}
-                defaultExpanded={true}
-              >
-                {sourceResult.result.success ? (
-                  <DefinitionCard result={sourceResult.result.data} />
-                ) : (
-                  <ErrorDisplay
-                    message={sourceResult.result.error.message}
-                    retryable={sourceResult.result.error.retryable}
-                    onRetry={() => handleRetry(sourceResult.providerId)}
-                  />
-                )}
-              </AccordionSection>
-            ))}
+            {displayItems.map((item) => {
+              if (item.type === 'result' || item.type === 'ai-result') {
+                const sourceResult = item.data;
+                if (!sourceResult.result.success) return null;
+                return (
+                  <AccordionSection
+                    key={sourceResult.providerId}
+                    id={sourceResult.providerId}
+                    title={sourceResult.providerName}
+                    loading={false}
+                    defaultExpanded={true}
+                  >
+                    <DefinitionCard result={sourceResult.result.data} />
+                  </AccordionSection>
+                );
+              }
+
+              if (item.type === 'ai-loading') {
+                const aiProvider = providerRegistry.getProvider(aiProviderId);
+                return (
+                  <AccordionSection
+                    key={aiProviderId}
+                    id={aiProviderId}
+                    title={aiProvider?.metadata.name || 'AI Analysis'}
+                    loading={true}
+                    defaultExpanded={true}
+                  >
+                    <div className="lex-ai-loading">
+                      <span className="lex-spinner-small" /> Analyzing...
+                    </div>
+                  </AccordionSection>
+                );
+              }
+
+              if (item.type === 'ai-error') {
+                const aiProvider = providerRegistry.getProvider(aiProviderId);
+                return (
+                  <AccordionSection
+                    key={aiProviderId}
+                    id={aiProviderId}
+                    title={aiProvider?.metadata.name || 'AI Analysis'}
+                    loading={false}
+                    defaultExpanded={true}
+                  >
+                    <ErrorDisplay
+                      message={item.error}
+                      retryable={true}
+                      onRetry={() => handleRetry(aiProviderId)}
+                    />
+                  </AccordionSection>
+                );
+              }
+
+              return null;
+            })}
           </Accordion>
         )}
 
-        {/* Show loading indicators for still-pending sources */}
-        {loadingIds.size > 0 && visibleResults.length > 0 && (
+        {/* Show loading indicators for still-pending sources (excluding AI which shows inline) */}
+        {loadingIds.size > 0 && hasVisibleContent && (
           <div className="lex-pending-sources">
-            {Array.from(loadingIds).map((id) => {
-              const provider = providerRegistry.getProvider(id);
-              return provider ? (
-                <span key={id} className="lex-pending-source">
-                  <span className="lex-spinner-small" /> {provider.metadata.name}
-                </span>
-              ) : null;
-            })}
+            {Array.from(loadingIds)
+              .filter((id) => id !== aiProviderId)
+              .map((id) => {
+                const provider = providerRegistry.getProvider(id);
+                return provider ? (
+                  <span key={id} className="lex-pending-source">
+                    <span className="lex-spinner-small" /> {provider.metadata.name}
+                  </span>
+                ) : null;
+              })}
           </div>
         )}
       </div>
