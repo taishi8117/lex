@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Lex Dictionary",
+  "version": "1.0.0",
+  "description": "Multi-source dictionary lookup - double-click any word to see definitions from multiple sources",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.dictionaryapi.dev/*",
+    "https://www.dictionaryapi.com/*",
+    "https://jisho.org/*",
+    "https://api.openai.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/index.tsx"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "src/options/index.html",
+    "open_in_tab": true
+  },
+  "icons": {
+    "16": "icons/icon-16.svg",
+    "48": "icons/icon-48.svg",
+    "128": "icons/icon-128.svg"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon-16.svg",
+      "48": "icons/icon-48.svg"
+    },
+    "default_title": "Lex Dictionary"
+  }
+}
