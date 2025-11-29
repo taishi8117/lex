@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Lex Dictionary",
+  "name": "Lex",
   "version": "1.0.0",
   "description": "Multi-source dictionary lookup - double-click any word to see definitions from multiple sources",
   "permissions": [
@@ -42,6 +42,6 @@
       "16": "icons/icon-16.svg",
       "48": "icons/icon-48.svg"
     },
-    "default_title": "Lex Dictionary"
+    "default_title": "Lex"
   }
 }

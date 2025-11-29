@@ -1,8 +1,8 @@
-# Lex Dictionary
+# Lex
 
 A Chrome extension for multi-source dictionary lookups. Double-click any word to see definitions from multiple sources simultaneously.
 
-![Lex Dictionary screenshot](screenshot.png)
+![Lex screenshot](screenshot.png)
 
 ## Features
 
