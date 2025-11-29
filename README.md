@@ -2,6 +2,8 @@
 
 A Chrome extension for multi-source dictionary lookups. Double-click any word to see definitions from multiple sources simultaneously.
 
+![Lex Dictionary screenshot](screenshot.png)
+
 ## Features
 
 - **Multi-source lookups**: Query multiple dictionaries in parallel
