@@ -1,6 +1,7 @@
 export interface SelectionResult {
   text: string;
   position: { x: number; y: number };
+  context?: string; // Surrounding text for AI context-awareness
 }
 
 export type SelectionCallback = (result: SelectionResult) => void;
@@ -38,63 +39,98 @@ export class SelectionHandler {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
 
-    let selectedText = selection.toString().trim();
+    // Only use the exact selected word (no idiom expansion on double-click)
+    const selectedText = selection.toString().trim();
     if (!selectedText || selectedText.length > 100) return;
 
-    // Try to expand selection to detect idioms/phrases
-    selectedText = this.tryExpandToIdiom(selection, selectedText);
+    // Skip if multiple words selected (user manually selected)
+    if (selectedText.includes(' ')) return;
 
     // Calculate popup position
     const position = this.calculatePosition(event, selection);
 
-    this.callback({ text: selectedText, position });
+    // Capture surrounding context for AI providers
+    const context = this.getSurroundingContext(selection);
+
+    this.callback({ text: selectedText, position, context });
   };
 
   /**
-   * Attempt to expand selection to capture multi-word idioms.
+   * Get surrounding text context for AI-powered lookups.
+   * Captures the sentence or paragraph containing the selection.
    */
-  private tryExpandToIdiom(selection: Selection, word: string): string {
+  getSurroundingContext(selection?: Selection | null): string | undefined {
+    const sel = selection || window.getSelection();
+    if (!sel || sel.isCollapsed) return undefined;
+
     try {
-      const range = selection.getRangeAt(0);
+      const range = sel.getRangeAt(0);
       const container = range.commonAncestorContainer;
 
-      if (container.nodeType !== Node.TEXT_NODE) return word;
+      // Get the text node or element containing the selection
+      const textNode = container.nodeType === Node.TEXT_NODE
+        ? container
+        : range.startContainer;
 
-      const text = container.textContent || '';
-      const wordStart = range.startOffset;
-      const wordEnd = range.endOffset;
+      if (textNode.nodeType !== Node.TEXT_NODE) return undefined;
 
-      // Get surrounding context (up to 30 chars each side)
-      const contextStart = Math.max(0, wordStart - 30);
-      const contextEnd = Math.min(text.length, wordEnd + 30);
-      const context = text.substring(contextStart, contextEnd);
+      const fullText = textNode.textContent || '';
+      const selStart = range.startOffset;
+      const selEnd = range.endOffset;
 
-      // Look for common idiom patterns
-      const idiomPatterns = [
-        // Phrasal verbs: "give up", "look after"
-        /\b(\w+)\s+(up|down|out|in|off|on|over|away|back|through)\b/gi,
-        // Common phrases with articles
-        /\b(a|the|an)\s+\w+\s+(of|in|on|at)\s+\w+/gi,
-        // "X and Y" patterns
-        /\b\w+\s+and\s+\w+\b/gi,
-      ];
+      // Find sentence boundaries (. ! ? or paragraph breaks)
+      const sentenceEndPattern = /[.!?]\s+/g;
 
-      // Check if selected word is part of a common pattern
-      for (const pattern of idiomPatterns) {
-        const matches = context.matchAll(pattern);
-        for (const match of matches) {
-          if (match[0].toLowerCase().includes(word.toLowerCase())) {
-            // Return the matched phrase if it's reasonable length
-            if (match[0].split(/\s+/).length <= 5) {
-              return match[0].trim();
-            }
-          }
+      // Find start of sentence
+      let contextStart = 0;
+      let match;
+      sentenceEndPattern.lastIndex = 0;
+      while ((match = sentenceEndPattern.exec(fullText)) !== null) {
+        if (match.index + match[0].length <= selStart) {
+          contextStart = match.index + match[0].length;
+        } else {
+          break;
         }
       }
 
-      return word;
+      // Find end of sentence
+      let contextEnd = fullText.length;
+      sentenceEndPattern.lastIndex = selEnd;
+      match = sentenceEndPattern.exec(fullText);
+      if (match) {
+        contextEnd = match.index + 1; // Include the punctuation
+      }
+
+      // Get the context, limiting to reasonable length
+      let context = fullText.substring(contextStart, contextEnd).trim();
+
+      // If context is too short, try to get parent element text
+      if (context.length < 20 && textNode.parentElement) {
+        const parentText = textNode.parentElement.textContent || '';
+        if (parentText.length > context.length && parentText.length <= 500) {
+          context = parentText.trim();
+        }
+      }
+
+      // Limit context length
+      if (context.length > 500) {
+        // Try to trim to sentence boundaries near the selection
+        const selectedText = sel.toString();
+        const selectedIndex = context.indexOf(selectedText);
+        if (selectedIndex >= 0) {
+          const start = Math.max(0, selectedIndex - 200);
+          const end = Math.min(context.length, selectedIndex + selectedText.length + 200);
+          context = context.substring(start, end);
+          if (start > 0) context = '...' + context;
+          if (end < context.length) context = context + '...';
+        } else {
+          context = context.substring(0, 500) + '...';
+        }
+      }
+
+      return context.length > 10 ? context : undefined;
     } catch {
-      return word;
+      return undefined;
     }
   }
 

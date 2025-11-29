@@ -1,5 +1,5 @@
 import { providerRegistry } from '@/providers/registry';
-import type { DictionaryProvider, LookupResult } from '@/providers/types';
+import type { DictionaryProvider, LookupResult, LookupOptions as ProviderLookupOptions } from '@/providers/types';
 import type { AggregatedResult, SourceLookupResult } from '@/shared/types';
 import { TIMEOUTS } from '@/shared/constants';
 
@@ -7,6 +7,8 @@ export interface LookupOptions {
   language?: string;
   timeout?: number;
   signal?: AbortSignal;
+  /** Surrounding text context for AI-powered providers */
+  context?: string;
 }
 
 /**
@@ -36,7 +38,7 @@ class LookupServiceImpl {
 
     // Execute all lookups in parallel
     const lookupPromises = providers.map((provider) =>
-      this.lookupWithTimeout(provider, normalizedWord, timeout, options.signal)
+      this.lookupWithTimeout(provider, normalizedWord, timeout, options.signal, options.context)
     );
 
     // Use allSettled to ensure all results are collected even if some fail
@@ -85,7 +87,8 @@ class LookupServiceImpl {
         provider,
         normalizedWord,
         timeout,
-        options.signal
+        options.signal,
+        options.context
       ).then((result) => ({ id: provider.metadata.id, result }));
 
       pending.set(provider.metadata.id, promise);
@@ -118,14 +121,15 @@ class LookupServiceImpl {
     }
 
     const timeout = options.timeout ?? TIMEOUTS.LOOKUP;
-    return this.lookupWithTimeout(provider, word.trim().toLowerCase(), timeout, options.signal);
+    return this.lookupWithTimeout(provider, word.trim().toLowerCase(), timeout, options.signal, options.context);
   }
 
   private async lookupWithTimeout(
     provider: DictionaryProvider,
     word: string,
     timeoutMs: number,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    context?: string
   ): Promise<SourceLookupResult> {
     const startTime = performance.now();
     const { id, name } = provider.metadata;
@@ -143,9 +147,12 @@ class LookupServiceImpl {
           })
         : null;
 
+      // Build provider-specific options
+      const providerOptions: ProviderLookupOptions = { context };
+
       // Race between lookup, timeout, and abort
       const promises: Promise<LookupResult>[] = [
-        provider.lookup(word),
+        provider.lookup(word, providerOptions),
         timeoutPromise,
       ];
       if (abortPromise) {

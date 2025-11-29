@@ -1,5 +1,5 @@
 import { BaseProvider } from './base-provider';
-import type { DictionaryResult, LookupResult, ProviderMetadata } from './types';
+import type { DictionaryResult, LookupOptions, LookupResult, ProviderMetadata } from './types';
 import { API_ENDPOINTS, TIMEOUTS } from '@/shared/constants';
 
 interface OpenAIMessage {
@@ -19,28 +19,29 @@ interface OpenAIResponse {
   };
 }
 
-interface UsageExample {
-  sentence: string;
-  context: string;
-  register?: string;
-}
-
-interface AIResponse {
-  definition?: string;
-  examples: UsageExample[];
+interface AIAnalysis {
+  type: 'word' | 'phrase' | 'sentence';
+  meaning_in_context?: string;
+  general_meaning?: string;
+  plain_english?: string;
   collocations?: string[];
+  register?: string;
   usage_notes?: string;
+  nuance?: string;
+  common_mistakes?: string;
+  related_expressions?: string[];
 }
 
 /**
- * OpenAI-powered provider for usage examples and learning context.
+ * OpenAI-powered provider for context-aware language learning.
+ * Optimized for advanced English learners who want to understand nuance.
  * Requires paid API key from https://platform.openai.com/
  */
 export class OpenAIProvider extends BaseProvider {
   readonly metadata: ProviderMetadata = {
     id: 'openai',
-    name: 'AI Usage Examples',
-    description: 'AI-generated usage examples and learning context powered by OpenAI',
+    name: 'AI Language Analysis',
+    description: 'Context-aware explanations, collocations, and usage nuances powered by AI',
     supportedLanguages: ['en', 'ja', 'es', 'fr', 'de', 'zh', 'ko'],
     requiresApiKey: true,
     configFields: [
@@ -64,42 +65,24 @@ export class OpenAIProvider extends BaseProvider {
           { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (Legacy)' },
         ],
       },
-      {
-        key: 'numExamples',
-        label: 'Number of Examples',
-        type: 'select',
-        required: false,
-        default: '3',
-        options: [
-          { value: '2', label: '2 examples' },
-          { value: '3', label: '3 examples' },
-          { value: '5', label: '5 examples' },
-        ],
-      },
-      {
-        key: 'includeCollocations',
-        label: 'Include common collocations',
-        type: 'boolean',
-        required: false,
-        default: true,
-      },
     ],
     defaultEnabled: false,
     defaultOrder: 50,
     website: 'https://platform.openai.com/',
   };
 
-  async lookup(word: string): Promise<LookupResult> {
+  async lookup(word: string, options?: LookupOptions): Promise<LookupResult> {
     const apiKey = this.config.apiKey as string;
     if (!apiKey) {
       return this.createError('CONFIG_ERROR', 'API key not configured');
     }
 
     const model = (this.config.model as string) || 'gpt-4o-mini';
-    const numExamples = parseInt((this.config.numExamples as string) || '3', 10);
-    const includeCollocations = this.config.includeCollocations !== false;
+    const context = options?.context;
 
-    const prompt = this.buildPrompt(word, numExamples, includeCollocations);
+    // Determine input type
+    const inputType = this.detectInputType(word);
+    const prompt = this.buildPrompt(word, inputType, context);
 
     try {
       const response = await this.fetchWithTimeout(
@@ -115,16 +98,15 @@ export class OpenAIProvider extends BaseProvider {
             messages: [
               {
                 role: 'system',
-                content:
-                  'You are a helpful language learning assistant. Provide clear, natural examples that help learners understand word usage.',
+                content: this.getSystemPrompt(),
               },
               {
                 role: 'user',
                 content: prompt,
               },
             ] as OpenAIMessage[],
-            temperature: 0.7,
-            max_tokens: 500,
+            temperature: 0.3,
+            max_tokens: 600,
           }),
         },
         TIMEOUTS.OPENAI
@@ -151,49 +133,104 @@ export class OpenAIProvider extends BaseProvider {
         return this.createError('API_ERROR', 'Empty response from OpenAI');
       }
 
-      const result = this.parseResponse(word, content);
+      const result = this.parseResponse(word, content, inputType);
       return this.createSuccess(result);
     } catch (error) {
       return this.handleFetchError(error);
     }
   }
 
-  private buildPrompt(word: string, numExamples: number, includeCollocations: boolean): string {
-    let prompt = `Generate ${numExamples} natural example sentences using the word or phrase "${word}".
+  private getSystemPrompt(): string {
+    return `You are an expert English language tutor helping advanced learners understand nuances, collocations, and contextual usage.
 
-For each example, provide:
-1. A natural sentence using the word
-2. Context explaining when/how this usage is appropriate
-3. Register (formal, informal, neutral, technical, etc.)
+Your responses should be:
+- Precise and informative (no fluff)
+- Focused on what advanced learners need: nuance, register, collocations
+- Aware of the difference between formal/informal/technical usage
+- Helpful for understanding meaning IN CONTEXT when context is provided
 
-`;
-
-    if (includeCollocations) {
-      prompt += `Also include 3-5 common collocations (words that frequently appear with "${word}").
-
-`;
-    }
-
-    prompt += `Respond in JSON format:
-{
-  "examples": [
-    {
-      "sentence": "Example sentence here",
-      "context": "When/how to use this",
-      "register": "informal"
-    }
-  ]${includeCollocations ? `,
-  "collocations": ["word1", "word2"]` : ''}
-}`;
-
-    return prompt;
+Always respond in valid JSON format as specified in the user's request.`;
   }
 
-  private parseResponse(word: string, content: string): DictionaryResult {
-    let parsed: AIResponse;
+  private detectInputType(text: string): 'word' | 'phrase' | 'sentence' {
+    const trimmed = text.trim();
+    const words = trimmed.split(/\s+/);
+
+    // Single word
+    if (words.length === 1) {
+      return 'word';
+    }
+
+    // Check for sentence markers (punctuation, capitalization patterns)
+    if (/[.!?]$/.test(trimmed) ||
+        (words.length > 4 && /^[A-Z]/.test(trimmed)) ||
+        words.length > 6) {
+      return 'sentence';
+    }
+
+    // Multi-word but not a sentence = phrase/idiom
+    return 'phrase';
+  }
+
+  private buildPrompt(text: string, inputType: 'word' | 'phrase' | 'sentence', context?: string): string {
+    const contextSection = context
+      ? `\nCONTEXT (the text where this appears): "${context}"\n`
+      : '';
+
+    if (inputType === 'sentence') {
+      return `Analyze this sentence for an advanced English learner:
+"${text}"
+${contextSection}
+Explain what this sentence means in plain, clear English. Note any idiomatic expressions, unusual constructions, or nuances.
+
+Respond in JSON:
+{
+  "type": "sentence",
+  "plain_english": "Clear explanation of what the sentence means",
+  "nuance": "Any subtle meaning, tone, or implication (optional)",
+  "usage_notes": "When/how this kind of expression is used (optional)"
+}`;
+    }
+
+    if (inputType === 'phrase') {
+      return `Analyze this phrase/expression for an advanced English learner:
+"${text}"
+${contextSection}
+Explain its meaning${context ? ' in this context' : ''}, how it's used, and any important nuances.
+
+Respond in JSON:
+{
+  "type": "phrase",
+  ${context ? '"meaning_in_context": "What it means specifically in this context",' : ''}
+  "general_meaning": "The general meaning of this phrase",
+  "register": "formal/informal/neutral/technical/slang",
+  "usage_notes": "When and how to use this phrase",
+  "related_expressions": ["similar phrases or alternatives"]
+}`;
+    }
+
+    // Single word
+    return `Analyze this word for an advanced English learner:
+"${text}"
+${contextSection}
+Provide: ${context ? 'meaning in this specific context, ' : ''}collocations (words it commonly pairs with), register, and any important nuances.
+
+Respond in JSON:
+{
+  "type": "word",
+  ${context ? '"meaning_in_context": "What it means specifically in this context",' : ''}
+  "general_meaning": "Core meaning of the word",
+  "collocations": ["common word1", "common word2", "verb + word", "word + noun patterns"],
+  "register": "formal/informal/neutral/technical",
+  "nuance": "Subtle connotations or usage distinctions",
+  "common_mistakes": "Errors learners often make with this word (optional)"
+}`;
+  }
+
+  private parseResponse(word: string, content: string, inputType: string): DictionaryResult {
+    let parsed: AIAnalysis;
 
     try {
-      // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsed = JSON.parse(jsonMatch[0]);
@@ -201,55 +238,88 @@ For each example, provide:
         throw new Error('No JSON found');
       }
     } catch {
-      // Fallback: treat entire response as a single example
+      // Fallback: treat entire response as plain text explanation
       return {
         word,
         definitions: [
           {
-            partOfSpeech: 'AI Examples',
-            definition: 'Usage examples and context',
-            examples: [content.trim()],
+            partOfSpeech: 'AI Analysis',
+            definition: content.trim(),
           },
         ],
       };
     }
 
-    const examples = parsed.examples || [];
-    const collocations = parsed.collocations || [];
-
-    const formattedExamples = examples.map((ex) => {
-      let example = ex.sentence;
-      if (ex.context) {
-        example += ` — ${ex.context}`;
-      }
-      if (ex.register) {
-        example += ` [${ex.register}]`;
-      }
-      return example;
-    });
-
     const definitions: DictionaryResult['definitions'] = [];
 
-    if (formattedExamples.length > 0) {
+    // Context-specific meaning (most important when available)
+    if (parsed.meaning_in_context) {
       definitions.push({
-        partOfSpeech: 'usage examples',
-        definition: `Natural examples showing how to use "${word}"`,
-        examples: formattedExamples,
+        partOfSpeech: 'in this context',
+        definition: parsed.meaning_in_context,
       });
     }
 
-    if (collocations.length > 0) {
+    // Plain English for sentences
+    if (parsed.plain_english) {
+      definitions.push({
+        partOfSpeech: 'meaning',
+        definition: parsed.plain_english,
+      });
+    }
+
+    // General meaning
+    if (parsed.general_meaning && !parsed.plain_english) {
+      definitions.push({
+        partOfSpeech: inputType === 'phrase' ? 'phrase meaning' : 'general meaning',
+        definition: parsed.general_meaning,
+      });
+    }
+
+    // Collocations (very important for language learners)
+    if (parsed.collocations && parsed.collocations.length > 0) {
       definitions.push({
         partOfSpeech: 'collocations',
-        definition: `Words commonly used with "${word}"`,
-        examples: [collocations.join(', ')],
+        definition: `Common combinations: ${parsed.collocations.join(' · ')}`,
       });
     }
 
+    // Register and nuance combined
+    const notes: string[] = [];
+    if (parsed.register) {
+      notes.push(`Register: ${parsed.register}`);
+    }
+    if (parsed.nuance) {
+      notes.push(parsed.nuance);
+    }
+    if (notes.length > 0) {
+      definitions.push({
+        partOfSpeech: 'usage',
+        definition: notes.join('. '),
+      });
+    }
+
+    // Usage notes
     if (parsed.usage_notes) {
       definitions.push({
-        partOfSpeech: 'usage notes',
+        partOfSpeech: 'note',
         definition: parsed.usage_notes,
+      });
+    }
+
+    // Common mistakes
+    if (parsed.common_mistakes) {
+      definitions.push({
+        partOfSpeech: 'caution',
+        definition: parsed.common_mistakes,
+      });
+    }
+
+    // Related expressions for phrases
+    if (parsed.related_expressions && parsed.related_expressions.length > 0) {
+      definitions.push({
+        partOfSpeech: 'related',
+        definition: parsed.related_expressions.join(' · '),
       });
     }
 

@@ -13,19 +13,18 @@
   --lex-error: #dc3545;
   --lex-success: #28a745;
 
-  /* Spacing */
-  --lex-space-xs: 4px;
-  --lex-space-sm: 8px;
-  --lex-space-md: 12px;
-  --lex-space-lg: 16px;
-  --lex-space-xl: 24px;
+  /* Compact Spacing */
+  --lex-space-xs: 2px;
+  --lex-space-sm: 4px;
+  --lex-space-md: 8px;
+  --lex-space-lg: 12px;
 
   /* Typography */
   --lex-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --lex-font-size-xs: 11px;
   --lex-font-size-sm: 12px;
-  --lex-font-size-base: 14px;
-  --lex-font-size-lg: 16px;
-  --lex-font-size-xl: 18px;
+  --lex-font-size-base: 13px;
+  --lex-font-size-lg: 15px;
 
   /* Animation */
   --lex-transition-fast: 150ms ease-out;
@@ -62,8 +61,8 @@
 
 /* Popup Container */
 .lex-popup {
-  width: 380px;
-  max-height: 450px;
+  width: 400px;
+  max-height: 500px;
   background: var(--lex-bg-primary);
   border-radius: 8px;
   box-shadow: var(--lex-shadow-lg);
@@ -73,13 +72,18 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: lex-popup-enter 200ms ease-out;
+  animation: lex-popup-enter 150ms ease-out;
+}
+
+.lex-popup--dragging {
+  user-select: none;
+  opacity: 0.95;
 }
 
 @keyframes lex-popup-enter {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(-8px);
+    transform: translateX(-50%) translateY(-4px);
   }
   to {
     opacity: 1;
@@ -87,7 +91,7 @@
   }
 }
 
-/* Header */
+/* Header - Draggable */
 .lex-popup-header {
   display: flex;
   align-items: center;
@@ -95,10 +99,16 @@
   padding: var(--lex-space-md) var(--lex-space-lg);
   border-bottom: 1px solid var(--lex-border);
   background: var(--lex-bg-secondary);
+  cursor: move;
+  user-select: none;
+}
+
+.lex-popup-header:active {
+  cursor: grabbing;
 }
 
 .lex-popup-word {
-  font-size: var(--lex-font-size-xl);
+  font-size: var(--lex-font-size-lg);
   font-weight: 600;
   margin: 0;
   overflow: hidden;
@@ -110,8 +120,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: none;
   border-radius: 4px;
   background: transparent;
@@ -132,11 +142,11 @@
   padding: var(--lex-space-sm);
 }
 
-/* Accordion */
+/* Accordion - Compact */
 .lex-accordion {
   display: flex;
   flex-direction: column;
-  gap: var(--lex-space-xs);
+  gap: var(--lex-space-sm);
 }
 
 .lex-accordion-section {
@@ -153,12 +163,13 @@
   display: flex;
   align-items: center;
   width: 100%;
-  padding: var(--lex-space-md);
+  padding: var(--lex-space-sm) var(--lex-space-md);
   border: none;
   background: var(--lex-bg-secondary);
-  color: var(--lex-text-primary);
+  color: var(--lex-text-secondary);
   font-family: inherit;
-  font-size: var(--lex-font-size-base);
+  font-size: var(--lex-font-size-sm);
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
   transition: background var(--lex-transition-fast);
@@ -178,6 +189,7 @@
   justify-content: center;
   margin-right: var(--lex-space-sm);
   transition: transform var(--lex-transition-normal);
+  opacity: 0.6;
 }
 
 .lex-accordion-icon--expanded {
@@ -186,53 +198,42 @@
 
 .lex-accordion-title {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.lex-accordion-title-main {
   font-weight: 500;
-}
-
-.lex-accordion-title-sub {
-  font-size: var(--lex-font-size-sm);
-  color: var(--lex-text-secondary);
 }
 
 .lex-accordion-content {
   display: none;
   padding: var(--lex-space-md);
+  padding-top: var(--lex-space-sm);
   background: var(--lex-bg-primary);
-  border-top: 1px solid var(--lex-border);
 }
 
 .lex-accordion-content--expanded {
   display: block;
 }
 
-/* Definition Card */
+/* Definition Card - Compact */
 .lex-definition-card {
   display: flex;
   flex-direction: column;
   gap: var(--lex-space-md);
 }
 
-/* Pronunciations */
+/* Pronunciations - Inline */
 .lex-pronunciations {
   display: flex;
   flex-wrap: wrap;
   gap: var(--lex-space-sm);
+  align-items: center;
 }
 
 .lex-pronunciation {
   display: inline-flex;
   align-items: center;
   gap: var(--lex-space-xs);
-  padding: var(--lex-space-xs) var(--lex-space-sm);
+  padding: 1px var(--lex-space-sm);
   background: var(--lex-bg-secondary);
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: var(--lex-font-size-sm);
   color: var(--lex-text-secondary);
 }
@@ -241,8 +242,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: none;
   border-radius: 50%;
   background: var(--lex-accent);
@@ -255,7 +256,7 @@
   background: var(--lex-accent-hover);
 }
 
-/* Definitions */
+/* Definitions - Compact */
 .lex-definitions {
   display: flex;
   flex-direction: column;
@@ -265,16 +266,16 @@
 .lex-definition-group {
   display: flex;
   flex-direction: column;
-  gap: var(--lex-space-sm);
+  gap: var(--lex-space-xs);
 }
 
 .lex-pos {
   display: inline-block;
-  padding: 2px 6px;
+  padding: 1px 5px;
   background: var(--lex-accent);
   color: white;
   border-radius: 3px;
-  font-size: var(--lex-font-size-sm);
+  font-size: var(--lex-font-size-xs);
   font-weight: 500;
   font-style: italic;
   width: fit-content;
@@ -285,18 +286,19 @@
   padding-left: var(--lex-space-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--lex-space-sm);
+  gap: var(--lex-space-xs);
 }
 
 .lex-definition-item {
-  line-height: 1.5;
+  line-height: 1.4;
+  font-size: var(--lex-font-size-base);
 }
 
 .lex-definition-text {
   display: block;
 }
 
-/* Examples */
+/* Examples - Compact */
 .lex-examples {
   list-style: none;
   padding: 0;
@@ -307,15 +309,16 @@
   font-style: italic;
   color: var(--lex-text-secondary);
   font-size: var(--lex-font-size-sm);
-  padding-left: var(--lex-space-sm);
+  padding-left: var(--lex-space-md);
   border-left: 2px solid var(--lex-border);
   margin-top: var(--lex-space-xs);
+  line-height: 1.3;
 }
 
-/* Synonyms/Antonyms */
+/* Synonyms/Antonyms - Compact */
 .lex-synonyms,
 .lex-antonyms {
-  font-size: var(--lex-font-size-sm);
+  font-size: var(--lex-font-size-xs);
   color: var(--lex-text-secondary);
   margin-top: var(--lex-space-xs);
 }
@@ -325,26 +328,18 @@
   margin-right: var(--lex-space-xs);
 }
 
-/* Etymology */
+/* Etymology - Hidden by default for compactness */
 .lex-etymology {
-  font-size: var(--lex-font-size-sm);
-  color: var(--lex-text-secondary);
-  padding: var(--lex-space-sm);
-  background: var(--lex-bg-secondary);
-  border-radius: 4px;
+  display: none;
 }
 
-.lex-etymology-label {
-  font-weight: 500;
-  margin-right: var(--lex-space-xs);
-}
-
-/* Source Link */
+/* Source Link - Compact */
 .lex-source-link {
   display: inline-block;
-  font-size: var(--lex-font-size-sm);
+  font-size: var(--lex-font-size-xs);
   color: var(--lex-accent);
   text-decoration: none;
+  margin-top: var(--lex-space-sm);
 }
 
 .lex-source-link:hover {
@@ -353,8 +348,8 @@
 
 /* Spinners */
 .lex-spinner {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid var(--lex-border);
   border-top-color: var(--lex-accent);
   border-radius: 50%;
@@ -363,8 +358,8 @@
 }
 
 .lex-spinner-small {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border: 2px solid var(--lex-border);
   border-top-color: var(--lex-accent);
   border-radius: 50%;
@@ -383,12 +378,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   background: var(--lex-error);
   color: white;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: bold;
   margin-left: auto;
 }
@@ -411,7 +406,7 @@
   color: white;
   padding: var(--lex-space-xs) var(--lex-space-sm);
   border-radius: 3px;
-  font-size: var(--lex-font-size-sm);
+  font-size: var(--lex-font-size-xs);
   cursor: pointer;
   margin-left: auto;
 }
@@ -423,13 +418,14 @@
 /* No Results */
 .lex-no-results {
   text-align: center;
-  padding: var(--lex-space-xl);
+  padding: var(--lex-space-lg);
   color: var(--lex-text-secondary);
+  font-size: var(--lex-font-size-sm);
 }
 
 .lex-no-results-hint {
   margin-top: var(--lex-space-sm);
-  font-size: var(--lex-font-size-sm);
+  font-size: var(--lex-font-size-xs);
 }
 
 .lex-retry-all {
@@ -447,7 +443,7 @@
   flex-wrap: wrap;
   gap: var(--lex-space-sm);
   padding: var(--lex-space-sm);
-  font-size: var(--lex-font-size-sm);
+  font-size: var(--lex-font-size-xs);
   color: var(--lex-text-secondary);
 }
 
@@ -478,12 +474,12 @@
 }
 
 .lex-skeleton--title {
-  height: 20px;
+  height: 16px;
   width: 40%;
 }
 
 .lex-skeleton--line {
-  height: 14px;
+  height: 12px;
   width: 100%;
 }
 
@@ -492,7 +488,7 @@
 }
 
 .lex-skeleton--header {
-  height: 44px;
+  height: 32px;
   width: 100%;
 }
 
@@ -517,16 +513,16 @@
 
 /* Scrollbar styling */
 .lex-popup-content::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 .lex-popup-content::-webkit-scrollbar-track {
-  background: var(--lex-bg-secondary);
+  background: transparent;
 }
 
 .lex-popup-content::-webkit-scrollbar-thumb {
   background: var(--lex-border);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .lex-popup-content::-webkit-scrollbar-thumb:hover {

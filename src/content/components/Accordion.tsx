@@ -3,7 +3,6 @@ import React, { useState, useRef } from 'react';
 interface AccordionSectionProps {
   id: string;
   title: string;
-  subtitle?: string;
   loading?: boolean;
   error?: boolean;
   defaultExpanded?: boolean;
@@ -13,7 +12,6 @@ interface AccordionSectionProps {
 export function AccordionSection({
   id,
   title,
-  subtitle,
   loading = false,
   error = false,
   defaultExpanded = false,
@@ -51,10 +49,7 @@ export function AccordionSection({
         <span className={`lex-accordion-icon ${expanded ? 'lex-accordion-icon--expanded' : ''}`}>
           <ChevronIcon />
         </span>
-        <span className="lex-accordion-title">
-          <span className="lex-accordion-title-main">{title}</span>
-          {subtitle && <span className="lex-accordion-title-sub">{subtitle}</span>}
-        </span>
+        <span className="lex-accordion-title">{title}</span>
         {loading && <span className="lex-spinner" aria-label="Loading" />}
         {error && <span className="lex-error-icon" aria-label="Error">!</span>}
       </button>

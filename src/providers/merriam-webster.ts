@@ -40,6 +40,7 @@ abstract class BaseMWProvider extends BaseProvider {
   protected abstract readonly webUrl: string;
 
   async lookup(word: string): Promise<LookupResult> {
+    // Note: This provider doesn't use context (LookupOptions)
     const apiKey = this.config.apiKey as string;
     if (!apiKey) {
       return this.createError('CONFIG_ERROR', 'API key not configured');

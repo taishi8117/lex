@@ -48,6 +48,7 @@ export class FreeDictionaryProvider extends BaseProvider {
   };
 
   async lookup(word: string): Promise<LookupResult> {
+    // Note: This provider doesn't use context (LookupOptions)
     const url = `${API_ENDPOINTS.FREE_DICTIONARY}/${encodeURIComponent(word)}`;
 
     try {

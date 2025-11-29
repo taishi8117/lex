@@ -8,6 +8,7 @@ import popupStyles from '../styles/popup.css?inline';
 let popupRoot: Root | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let hostElement: HTMLElement | null = null;
+let selectionHandler: SelectionHandler | null = null;
 
 /**
  * Initialize the extension content script.
@@ -31,10 +32,45 @@ async function init() {
   createShadowHost();
 
   // Set up selection handler
-  const selectionHandler = new SelectionHandler(handleWordSelected);
+  selectionHandler = new SelectionHandler(handleWordSelected);
   selectionHandler.attach();
 
+  // Listen for context menu lookups from background script
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === 'LOOKUP_SELECTION' && message.text) {
+      // Get current mouse position or center of viewport
+      const position = getPopupPosition();
+      // Capture context from current selection
+      const context = selectionHandler?.getSurroundingContext();
+      showPopup(message.text, position, context);
+    }
+  });
+
   console.log('[Lex Dictionary] Initialized');
+}
+
+/**
+ * Get position for popup (near selection or center of viewport).
+ */
+function getPopupPosition(): { x: number; y: number } {
+  const selection = window.getSelection();
+  if (selection && !selection.isCollapsed) {
+    try {
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.bottom + 10,
+      };
+    } catch {
+      // Fall through to default
+    }
+  }
+  // Default to center of viewport
+  return {
+    x: window.innerWidth / 2,
+    y: window.innerHeight / 3,
+  };
 }
 
 /**
@@ -75,13 +111,13 @@ function createShadowHost() {
  * Handle word selection from the selection handler.
  */
 function handleWordSelected(result: SelectionResult) {
-  showPopup(result.text, result.position);
+  showPopup(result.text, result.position, result.context);
 }
 
 /**
  * Show the popup for a word at the given position.
  */
-function showPopup(word: string, position: { x: number; y: number }) {
+function showPopup(word: string, position: { x: number; y: number }, context?: string) {
   // Close existing popup first
   hidePopup();
 
@@ -102,6 +138,7 @@ function showPopup(word: string, position: { x: number; y: number }) {
     <Popup
       word={word}
       position={position}
+      context={context}
       onClose={hidePopup}
     />
   );

@@ -5,7 +5,8 @@
   "description": "Multi-source dictionary lookup - double-click any word to see definitions from multiple sources",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "contextMenus"
   ],
   "host_permissions": [
     "https://api.dictionaryapi.dev/*",

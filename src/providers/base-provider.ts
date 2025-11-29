@@ -1,6 +1,7 @@
 import type {
   DictionaryProvider,
   DictionaryResult,
+  LookupOptions,
   LookupResult,
   ProviderError,
   ProviderMetadata,
@@ -32,7 +33,7 @@ export abstract class BaseProvider implements DictionaryProvider {
     return { valid: true };
   }
 
-  abstract lookup(word: string, language?: string): Promise<LookupResult>;
+  abstract lookup(word: string, options?: LookupOptions): Promise<LookupResult>;
 
   dispose(): void {
     this.initialized = false;

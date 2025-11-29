@@ -9,19 +9,56 @@ import type { AggregatedResult, SourceLookupResult } from '@/shared/types';
 interface PopupProps {
   word: string;
   position: { x: number; y: number };
+  context?: string;
   onClose: () => void;
 }
 
-export function Popup({ word, position, onClose }: PopupProps) {
+export function Popup({ word, position, context, onClose }: PopupProps) {
   const [results, setResults] = useState<AggregatedResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+  const [popupPos, setPopupPos] = useState({ x: position.x, y: position.y });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = React.useRef({ x: 0, y: 0 });
+
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.lex-popup-close')) return;
+    setIsDragging(true);
+    dragOffset.current = {
+      x: e.clientX - popupPos.x,
+      y: e.clientY - popupPos.y,
+    };
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setPopupPos({
+        x: e.clientX - dragOffset.current.x,
+        y: e.clientY - dragOffset.current.y,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // Calculate position styles
   const positionStyle: React.CSSProperties = {
     position: 'fixed',
-    left: `${position.x}px`,
-    top: `${position.y}px`,
+    left: `${popupPos.x}px`,
+    top: `${popupPos.y}px`,
     transform: 'translateX(-50%)',
   };
 
@@ -41,6 +78,7 @@ export function Popup({ word, position, onClose }: PopupProps) {
 
         for await (const result of lookupService.lookupStreaming(word, {
           signal: abortController.signal,
+          context,
         })) {
           if (cancelled) break;
 
@@ -73,7 +111,7 @@ export function Popup({ word, position, onClose }: PopupProps) {
       cancelled = true;
       abortController.abort();
     };
-  }, [word]);
+  }, [word, context]);
 
   // Handle click outside to close
   useEffect(() => {
@@ -111,7 +149,7 @@ export function Popup({ word, position, onClose }: PopupProps) {
     async (providerId: string) => {
       setLoadingIds((prev) => new Set(prev).add(providerId));
 
-      const result = await lookupService.lookupSingle(providerId, word);
+      const result = await lookupService.lookupSingle(providerId, word, { context });
 
       if (result) {
         setResults((prev) => {
@@ -128,7 +166,7 @@ export function Popup({ word, position, onClose }: PopupProps) {
         return next;
       });
     },
-    [word]
+    [word, context]
   );
 
   // Filter out sources with no results
@@ -145,9 +183,9 @@ export function Popup({ word, position, onClose }: PopupProps) {
   const noResults = allProvidersLoaded && visibleResults.length === 0;
 
   return (
-    <div className="lex-popup" style={positionStyle} role="dialog" aria-label="Dictionary definitions">
-      {/* Header */}
-      <header className="lex-popup-header">
+    <div className={`lex-popup ${isDragging ? 'lex-popup--dragging' : ''}`} style={positionStyle} role="dialog" aria-label="Dictionary definitions">
+      {/* Header - draggable */}
+      <header className="lex-popup-header" onMouseDown={handleMouseDown}>
         <h2 className="lex-popup-word">{word}</h2>
         <button
           className="lex-popup-close"
@@ -182,18 +220,13 @@ export function Popup({ word, position, onClose }: PopupProps) {
 
         {visibleResults.length > 0 && (
           <Accordion>
-            {visibleResults.map((sourceResult, index) => (
+            {visibleResults.map((sourceResult) => (
               <AccordionSection
                 key={sourceResult.providerId}
                 id={sourceResult.providerId}
                 title={sourceResult.providerName}
-                subtitle={
-                  sourceResult.result.success
-                    ? `${sourceResult.result.data.definitions.length} definitions`
-                    : undefined
-                }
                 loading={loadingIds.has(sourceResult.providerId)}
-                defaultExpanded={index === 0}
+                defaultExpanded={true}
               >
                 {sourceResult.result.success ? (
                   <DefinitionCard result={sourceResult.result.data} />

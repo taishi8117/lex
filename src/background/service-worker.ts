@@ -1,18 +1,35 @@
 /**
  * Background service worker for Lex Dictionary extension.
- * Handles messaging between content scripts and manages extension lifecycle.
+ * Handles context menu and messaging between content scripts.
  */
 
-// Listen for extension installation
+// Create context menu on installation
 chrome.runtime.onInstalled.addListener((details) => {
+  // Create context menu for selected text
+  chrome.contextMenus.create({
+    id: 'lex-lookup',
+    title: 'Look up "%s"',
+    contexts: ['selection'],
+  });
+
   if (details.reason === 'install') {
     console.log('[Lex Dictionary] Extension installed');
-    // Set default settings
     chrome.storage.local.set({
       lex_provider_settings: {},
     });
   } else if (details.reason === 'update') {
     console.log('[Lex Dictionary] Extension updated to version', chrome.runtime.getManifest().version);
+  }
+});
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === 'lex-lookup' && info.selectionText && tab?.id) {
+    // Send message to content script to show popup
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'LOOKUP_SELECTION',
+      text: info.selectionText.trim(),
+    });
   }
 });
 

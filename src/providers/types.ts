@@ -62,6 +62,15 @@ export interface ProviderMetadata {
 }
 
 /**
+ * Options for dictionary lookup.
+ */
+export interface LookupOptions {
+  language?: string;
+  /** Surrounding text context for AI-powered providers */
+  context?: string;
+}
+
+/**
  * The main interface that all dictionary providers must implement.
  */
 export interface DictionaryProvider {
@@ -75,7 +84,7 @@ export interface DictionaryProvider {
   /**
    * Perform a dictionary lookup.
    */
-  lookup(word: string, language?: string): Promise<LookupResult>;
+  lookup(word: string, options?: LookupOptions): Promise<LookupResult>;
 
   /**
    * Check if the provider supports a given language.

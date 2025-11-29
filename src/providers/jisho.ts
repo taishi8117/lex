@@ -63,6 +63,7 @@ export class JishoProvider extends BaseProvider {
   };
 
   async lookup(word: string): Promise<LookupResult> {
+    // Note: This provider doesn't use context (LookupOptions)
     const url = `${API_ENDPOINTS.JISHO}?keyword=${encodeURIComponent(word)}`;
 
     try {
