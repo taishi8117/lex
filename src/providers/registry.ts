@@ -1,4 +1,5 @@
 import type { DictionaryProvider, ProviderRegistration } from './types';
+import { getStorageAdapter } from '@/services/storage-adapter';
 
 /**
  * Singleton registry for managing dictionary providers.
@@ -8,6 +9,7 @@ import type { DictionaryProvider, ProviderRegistration } from './types';
 class ProviderRegistryImpl {
   private providers: Map<string, ProviderRegistration> = new Map();
   private static instance: ProviderRegistryImpl;
+  private storage = getStorageAdapter();
 
   static getInstance(): ProviderRegistryImpl {
     if (!this.instance) {
@@ -117,10 +119,9 @@ class ProviderRegistryImpl {
    */
   async loadFromStorage(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get('lex_provider_settings');
-      const saved = result.lex_provider_settings as
-        | Record<string, { enabled: boolean; order: number; config: Record<string, unknown> }>
-        | undefined;
+      const saved = await this.storage.get<
+        Record<string, { enabled: boolean; order: number; config: Record<string, unknown> }>
+      >('lex_provider_settings');
 
       if (saved) {
         for (const [id, settings] of Object.entries(saved)) {
@@ -156,7 +157,7 @@ class ProviderRegistryImpl {
       };
     }
 
-    await chrome.storage.local.set({ lex_provider_settings: settings });
+    await this.storage.set('lex_provider_settings', settings);
   }
 
   /**

@@ -10,6 +10,10 @@ dist/
 *.swp
 *.swo
 
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
 # OS
 .DS_Store
 Thumbs.db

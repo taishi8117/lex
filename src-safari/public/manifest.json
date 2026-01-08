@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Lex",
+  "version": "1.0.0",
+  "description": "Multi-source dictionary lookup - select text and tap the toolbar button",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://api.dictionaryapi.dev/*",
+    "https://dictionaryapi.com/*",
+    "https://www.dictionaryapi.com/*",
+    "https://jisho.org/*",
+    "https://api.openai.com/*",
+    "https://en.wikipedia.org/*",
+    "https://api.urbandictionary.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["assets/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon-16.svg",
+    "48": "icons/icon-48.svg",
+    "128": "icons/icon-128.svg"
+  },
+  "action": {
+    "default_icon": {
+      "16": "icons/icon-16.svg",
+      "48": "icons/icon-48.svg"
+    },
+    "default_title": "Lex - Look up selected text"
+  },
+  "options_ui": {
+    "page": "options/index.html",
+    "open_in_tab": true
+  }
+}

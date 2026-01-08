@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lex Settings</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      max-width: 500px;
+      margin: 0 auto;
+      background: #fff;
+      color: #212529;
+      font-size: 15px;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1e1e1e; color: #e4e4e4; }
+      input { background: #2d2d2d; color: #e4e4e4; border-color: #404040; }
+      .section { background: #2d2d2d; }
+    }
+    h1 { font-size: 24px; margin: 0 0 8px; }
+    .subtitle { color: #6c757d; margin-bottom: 24px; font-size: 14px; }
+    .section {
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 12px;
+      margin: 16px 0;
+    }
+    .section h2 { font-size: 16px; margin: 0 0 12px; }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      font-size: 15px;
+      margin-top: 6px;
+    }
+    .api-section { margin-top: 12px; }
+    .api-section > label {
+      font-size: 13px;
+      color: #6c757d;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .status {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #28a745;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .status.show { opacity: 1; }
+    .help { font-size: 12px; color: #6c757d; margin-top: 6px; }
+    .instructions {
+      background: #e7f3ff;
+      border: 1px solid #b6d4fe;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .instructions strong { display: block; margin-bottom: 4px; }
+    @media (prefers-color-scheme: dark) {
+      .instructions { background: #1a3a5c; border-color: #2d5a8a; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Lex Dictionary</h1>
+  <p class="subtitle">Configure your dictionary sources and API keys</p>
+
+  <div class="instructions">
+    <strong>How to use:</strong>
+    Select text on any webpage, then tap the Lex button in Safari's toolbar to look up definitions.
+  </div>
+
+  <div class="section">
+    <h2>Dictionary Sources</h2>
+    <label><input type="checkbox" id="free-dictionary" checked> Free Dictionary</label>
+    <label><input type="checkbox" id="wikipedia" checked> Wikipedia</label>
+    <label><input type="checkbox" id="urban-dictionary" checked> Urban Dictionary</label>
+    <label><input type="checkbox" id="jisho"> Jisho (Japanese)</label>
+  </div>
+
+  <div class="section">
+    <h2>AI Analysis (OpenAI)</h2>
+    <label><input type="checkbox" id="openai"> Enable AI Analysis</label>
+    <div class="api-section">
+      <label for="openai-key">API Key</label>
+      <input type="password" id="openai-key" placeholder="sk-...">
+      <div class="help">Get your key from platform.openai.com</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Merriam-Webster</h2>
+    <label><input type="checkbox" id="mw-collegiate"> Collegiate Dictionary</label>
+    <label><input type="checkbox" id="mw-learners"> Learner's Dictionary</label>
+    <div class="api-section">
+      <label for="mw-key">API Key</label>
+      <input type="password" id="mw-key" placeholder="Enter MW API key">
+      <div class="help">Get a free key from dictionaryapi.com</div>
+    </div>
+  </div>
+
+  <div class="status" id="status">Settings saved!</div>
+
+  <script>
+    // Inline script to avoid path issues
+    console.log('[Lex Options] Script loading...');
+
+    const browser = window.browser || window.chrome;
+    console.log('[Lex Options] Browser API:', !!browser);
+
+    const DEFAULT_SETTINGS = {
+      providers: {
+        'free-dictionary': true,
+        'wikipedia': true,
+        'urban-dictionary': true,
+        'jisho': false,
+        'openai': false,
+        'mw-collegiate': false,
+        'mw-learners': false,
+      },
+      apiKeys: {
+        openai: '',
+        merriamWebster: '',
+      },
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      console.log('[Lex Options] DOM loaded');
+      try {
+        const settings = await loadSettings();
+        console.log('[Lex Options] Loaded settings:', settings);
+        applySettingsToUI(settings);
+        setupEventListeners();
+      } catch (error) {
+        console.error('[Lex Options] Init error:', error);
+      }
+    });
+
+    async function loadSettings() {
+      try {
+        if (!browser?.storage?.local) {
+          console.log('[Lex Options] No storage API');
+          return DEFAULT_SETTINGS;
+        }
+        const result = await browser.storage.local.get('lex_extension_settings');
+        return result.lex_extension_settings || DEFAULT_SETTINGS;
+      } catch (e) {
+        console.error('[Lex Options] Load error:', e);
+        return DEFAULT_SETTINGS;
+      }
+    }
+
+    async function saveSettings(settings) {
+      try {
+        if (!browser?.storage?.local) return;
+        await browser.storage.local.set({ lex_extension_settings: settings });
+        console.log('[Lex Options] Saved:', settings);
+        showStatus();
+      } catch (e) {
+        console.error('[Lex Options] Save error:', e);
+      }
+    }
+
+    function applySettingsToUI(settings) {
+      Object.entries(settings.providers).forEach(([id, enabled]) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = enabled;
+      });
+      const openaiKey = document.getElementById('openai-key');
+      const mwKey = document.getElementById('mw-key');
+      if (openaiKey) openaiKey.value = settings.apiKeys.openai || '';
+      if (mwKey) mwKey.value = settings.apiKeys.merriamWebster || '';
+    }
+
+    function getSettingsFromUI() {
+      return {
+        providers: {
+          'free-dictionary': document.getElementById('free-dictionary')?.checked ?? true,
+          'wikipedia': document.getElementById('wikipedia')?.checked ?? true,
+          'urban-dictionary': document.getElementById('urban-dictionary')?.checked ?? true,
+          'jisho': document.getElementById('jisho')?.checked ?? false,
+          'openai': document.getElementById('openai')?.checked ?? false,
+          'mw-collegiate': document.getElementById('mw-collegiate')?.checked ?? false,
+          'mw-learners': document.getElementById('mw-learners')?.checked ?? false,
+        },
+        apiKeys: {
+          openai: document.getElementById('openai-key')?.value || '',
+          merriamWebster: document.getElementById('mw-key')?.value || '',
+        },
+      };
+    }
+
+    function setupEventListeners() {
+      document.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', () => saveSettings(getSettingsFromUI()));
+        if (input.type === 'password' || input.type === 'text') {
+          let timeout;
+          input.addEventListener('input', () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => saveSettings(getSettingsFromUI()), 500);
+          });
+        }
+      });
+    }
+
+    function showStatus() {
+      const status = document.getElementById('status');
+      if (status) {
+        status.classList.add('show');
+        setTimeout(() => status.classList.remove('show'), 2000);
+      }
+    }
+  </script>
+</body>
+</html>

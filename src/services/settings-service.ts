@@ -1,13 +1,16 @@
 import type { AppSettings } from '@/shared/types';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
+import { getStorageAdapter } from './storage-adapter';
 
 const SETTINGS_KEY = 'lex_settings';
 
 /**
- * Service for managing application settings via Chrome storage.
+ * Service for managing application settings via storage adapter.
+ * Works with both Chrome and Safari storage backends.
  */
 class SettingsServiceImpl {
   private cache: AppSettings | null = null;
+  private storage = getStorageAdapter();
 
   /**
    * Get current settings, loading from storage if needed.
@@ -18,8 +21,7 @@ class SettingsServiceImpl {
     }
 
     try {
-      const result = await chrome.storage.local.get(SETTINGS_KEY);
-      const stored = result[SETTINGS_KEY] as Partial<AppSettings> | undefined;
+      const stored = await this.storage.get<Partial<AppSettings>>(SETTINGS_KEY);
 
       this.cache = {
         ...DEFAULT_SETTINGS,
@@ -47,7 +49,7 @@ class SettingsServiceImpl {
       behavior: updates.behavior ? { ...current.behavior, ...updates.behavior } : current.behavior,
     };
 
-    await chrome.storage.local.set({ [SETTINGS_KEY]: this.cache });
+    await this.storage.set(SETTINGS_KEY, this.cache);
   }
 
   /**
@@ -55,7 +57,7 @@ class SettingsServiceImpl {
    */
   async reset(): Promise<void> {
     this.cache = { ...DEFAULT_SETTINGS };
-    await chrome.storage.local.set({ [SETTINGS_KEY]: this.cache });
+    await this.storage.set(SETTINGS_KEY, this.cache);
   }
 
   /**

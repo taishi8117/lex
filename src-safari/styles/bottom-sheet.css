@@ -1,0 +1,644 @@
+/* Bottom Sheet Styles - Clean minimal design matching Chrome */
+
+:host {
+  --lex-bg-primary: #ffffff;
+  --lex-bg-secondary: #f5f5f7;
+  --lex-bg-hover: #e8e8ed;
+  --lex-text-primary: #1d1d1f;
+  --lex-text-secondary: #6e6e73;
+  --lex-text-muted: #aeaeb2;
+  --lex-border: #d2d2d7;
+  --lex-accent: #007aff;
+  --lex-accent-bg: rgba(0, 122, 255, 0.1);
+  --lex-error: #ff3b30;
+  --lex-success: #34c759;
+}
+
+@media (prefers-color-scheme: dark) {
+  :host {
+    --lex-bg-primary: #1c1c1e;
+    --lex-bg-secondary: #2c2c2e;
+    --lex-bg-hover: #3a3a3c;
+    --lex-text-primary: #f5f5f7;
+    --lex-text-secondary: #98989d;
+    --lex-text-muted: #636366;
+    --lex-border: #38383a;
+    --lex-accent: #0a84ff;
+    --lex-accent-bg: rgba(10, 132, 255, 0.15);
+  }
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Backdrop */
+.lex-bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 2147483646;
+}
+
+/* Bottom Sheet */
+.lex-bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 50vh;
+  background: var(--lex-bg-primary);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.15);
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-size: 14px;
+  color: var(--lex-text-primary);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.lex-bottom-sheet--expanded {
+  top: env(safe-area-inset-top, 44px);
+  bottom: 0;
+  max-height: none;
+  border-radius: 0;
+}
+
+/* Smooth transition for expand/collapse */
+.lex-bottom-sheet:not(.lex-bottom-sheet--dragging) {
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              top 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              border-radius 0.3s ease;
+}
+
+/* Drag Handle - larger touch target */
+.lex-bottom-sheet-handle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 0;
+  cursor: grab;
+  touch-action: none;
+  min-height: 32px;
+}
+
+.lex-bottom-sheet-handle-bar {
+  width: 40px;
+  height: 5px;
+  background: var(--lex-text-muted);
+  border-radius: 3px;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+/* Handle active state when dragging */
+.lex-bottom-sheet--dragging .lex-bottom-sheet-handle-bar {
+  background: var(--lex-accent);
+  transform: scaleX(1.2);
+}
+
+/* Header */
+.lex-bottom-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 12px;
+  border-bottom: 0.5px solid var(--lex-border);
+}
+
+.lex-bottom-sheet-word {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lex-bottom-sheet-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.lex-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--lex-bg-secondary);
+  color: var(--lex-text-secondary);
+  cursor: pointer;
+}
+
+.lex-header-btn:active {
+  background: var(--lex-bg-hover);
+}
+
+.lex-header-btn--active {
+  background: var(--lex-accent-bg);
+  color: var(--lex-accent);
+}
+
+/* Content */
+.lex-bottom-sheet-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============ SETTINGS PANEL ============ */
+.lex-settings-panel {
+  flex: 1;
+  background: var(--lex-bg-primary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lex-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 0.5px solid var(--lex-border);
+  flex-shrink: 0;
+}
+
+.lex-settings-header h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.lex-settings-done {
+  border: none;
+  background: none;
+  color: var(--lex-accent);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.lex-settings-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lex-settings-section {
+  padding: 16px;
+  border-bottom: 0.5px solid var(--lex-border);
+}
+
+.lex-settings-section:last-child {
+  border-bottom: none;
+}
+
+.lex-settings-section h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lex-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.lex-settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 0.5px solid var(--lex-border);
+}
+
+.lex-settings-toggle:last-of-type {
+  border-bottom: none;
+}
+
+.lex-settings-toggle span {
+  font-size: 15px;
+}
+
+.lex-settings-toggle input[type="checkbox"] {
+  width: 51px;
+  height: 31px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--lex-bg-hover);
+  border-radius: 16px;
+  position: relative;
+  cursor: pointer;
+}
+
+.lex-settings-toggle input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.lex-settings-toggle input[type="checkbox"]:checked {
+  background: var(--lex-success);
+}
+
+.lex-settings-toggle input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+}
+
+.lex-settings-input-group {
+  margin-top: 12px;
+}
+
+.lex-settings-input-group label {
+  display: block;
+  font-size: 13px;
+  color: var(--lex-text-secondary);
+  margin-bottom: 6px;
+}
+
+.lex-settings-input-group input {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--lex-bg-secondary);
+  color: var(--lex-text-primary);
+  font-size: 15px;
+}
+
+.lex-settings-input-group input::placeholder {
+  color: var(--lex-text-muted);
+}
+
+.lex-settings-input-group input:focus {
+  outline: 2px solid var(--lex-accent);
+  outline-offset: -2px;
+}
+
+/* Provider reorder list */
+.lex-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lex-provider-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--lex-bg-secondary);
+  border-radius: 8px;
+}
+
+.lex-provider-item-handle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  color: var(--lex-text-muted);
+  cursor: grab;
+}
+
+.lex-provider-item-handle span {
+  display: block;
+  width: 14px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.lex-provider-item-name {
+  flex: 1;
+  font-size: 14px;
+}
+
+.lex-provider-item-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.lex-provider-move-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: var(--lex-bg-primary);
+  color: var(--lex-text-secondary);
+  cursor: pointer;
+}
+
+.lex-provider-move-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.lex-provider-move-btn:active:not(:disabled) {
+  background: var(--lex-bg-hover);
+}
+
+/* ============ ACCORDION ============ */
+.lex-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lex-accordion-section {
+  border: 0.5px solid var(--lex-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--lex-bg-primary);
+}
+
+.lex-accordion-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: var(--lex-bg-secondary);
+  color: var(--lex-text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lex-accordion-header:active {
+  background: var(--lex-bg-hover);
+}
+
+.lex-accordion-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 6px;
+  transition: transform 0.2s ease;
+  opacity: 0.6;
+}
+
+.lex-accordion-icon--expanded {
+  transform: rotate(90deg);
+}
+
+.lex-accordion-title {
+  flex: 1;
+}
+
+.lex-accordion-content {
+  display: none;
+  padding: 10px 12px;
+}
+
+.lex-accordion-content--expanded {
+  display: block;
+}
+
+/* ============ DEFINITION CARD ============ */
+.lex-definition-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lex-pronunciations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.lex-pronunciation {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--lex-bg-secondary);
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--lex-text-secondary);
+}
+
+.lex-pronunciation-play {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: var(--lex-accent);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lex-definitions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lex-definition-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lex-pos {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--lex-accent);
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  font-style: italic;
+  width: fit-content;
+}
+
+.lex-definition-list {
+  margin: 0;
+  padding-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lex-definition-item {
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.lex-examples {
+  list-style: none;
+  padding: 0;
+  margin-top: 4px;
+}
+
+.lex-example {
+  font-style: italic;
+  color: var(--lex-text-secondary);
+  font-size: 13px;
+  padding-left: 12px;
+  border-left: 2px solid var(--lex-border);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.lex-synonyms, .lex-antonyms {
+  font-size: 12px;
+  color: var(--lex-text-secondary);
+}
+
+.lex-label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.lex-source-link {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--lex-accent);
+  text-decoration: none;
+  margin-top: 6px;
+}
+
+/* Spinners */
+.lex-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--lex-border);
+  border-top-color: var(--lex-accent);
+  border-radius: 50%;
+  animation: lex-spin 0.8s linear infinite;
+  margin-left: auto;
+}
+
+.lex-spinner-small {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--lex-border);
+  border-top-color: var(--lex-accent);
+  border-radius: 50%;
+  animation: lex-spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes lex-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error */
+.lex-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 59, 48, 0.1);
+  border-radius: 8px;
+  color: var(--lex-error);
+  font-size: 13px;
+}
+
+.lex-error-retry {
+  margin-left: auto;
+  border: none;
+  background: var(--lex-error);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* No Results */
+.lex-no-results {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--lex-text-secondary);
+}
+
+.lex-no-results p {
+  font-size: 14px;
+}
+
+.lex-retry-all {
+  border: none;
+  background: none;
+  color: var(--lex-accent);
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Pending */
+.lex-pending-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--lex-text-muted);
+}
+
+.lex-pending-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Skeleton */
+.lex-accordion-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lex-skeleton {
+  background: linear-gradient(90deg, var(--lex-bg-secondary) 0%, var(--lex-bg-hover) 50%, var(--lex-bg-secondary) 100%);
+  background-size: 200% 100%;
+  animation: lex-shimmer 1.2s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+.lex-skeleton--header {
+  height: 40px;
+}
+
+@keyframes lex-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* AI Loading */
+.lex-ai-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--lex-text-secondary);
+  font-size: 13px;
+}
+
+/* Hide etymology */
+.lex-etymology { display: none; }

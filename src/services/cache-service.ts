@@ -1,5 +1,6 @@
 import type { DictionaryResult } from '@/providers/types';
 import { CACHE_CONFIG } from '@/shared/constants';
+import { getStorageAdapter } from './storage-adapter';
 
 interface CacheEntry {
   data: DictionaryResult;
@@ -61,10 +62,11 @@ class LRUCache<K, V> {
  * Three-tier caching service:
  * L1: Memory (LRU cache) - instant access
  * L2: Session storage - persists per tab
- * L3: Chrome storage - persistent across sessions
+ * L3: Browser storage - persistent across sessions (Chrome only, Safari skips due to 50KB limit)
  */
 class CacheServiceImpl {
   private memoryCache = new LRUCache<string, CacheEntry>(CACHE_CONFIG.MEMORY_MAX_ENTRIES);
+  private storage = getStorageAdapter();
 
   /**
    * Get cached result for a word from a specific source.
@@ -95,10 +97,9 @@ class CacheServiceImpl {
       // Session storage may not be available in some contexts
     }
 
-    // L3: Chrome storage
+    // L3: Browser storage (Chrome persists, Safari skips due to 50KB limit)
     try {
-      const result = await chrome.storage.local.get(key);
-      const stored = result[key] as CacheEntry | undefined;
+      const stored = await this.storage.get<CacheEntry>(key);
       if (stored && !this.isExpired(stored)) {
         // Promote to L1 and L2
         this.memoryCache.set(key, stored);
@@ -111,10 +112,10 @@ class CacheServiceImpl {
       }
       // Clean up expired entry
       if (stored) {
-        await chrome.storage.local.remove(key);
+        await this.storage.remove(key);
       }
     } catch {
-      // Chrome storage may not be available
+      // Storage may not be available
     }
 
     return null;
@@ -144,11 +145,11 @@ class CacheServiceImpl {
       // Ignore session storage errors (quota exceeded, etc.)
     }
 
-    // L3: Chrome storage (async)
+    // L3: Browser storage (async) - Safari adapter will skip cache entries
     try {
-      await chrome.storage.local.set({ [key]: entry });
+      await this.storage.set(key, entry);
     } catch {
-      // Ignore chrome storage errors
+      // Ignore storage errors
     }
   }
 
@@ -167,7 +168,7 @@ class CacheServiceImpl {
     }
 
     try {
-      await chrome.storage.local.remove(key);
+      await this.storage.remove(key);
     } catch {
       // Ignore
     }
@@ -193,14 +194,14 @@ class CacheServiceImpl {
       // Ignore
     }
 
-    // Clear chrome storage (only our cache keys)
+    // Clear browser storage (only our cache keys)
     try {
-      const result = await chrome.storage.local.get(null);
+      const result = await this.storage.getAll();
       const keysToRemove = Object.keys(result).filter((key) =>
         key.startsWith(CACHE_CONFIG.STORAGE_KEY_PREFIX)
       );
       if (keysToRemove.length > 0) {
-        await chrome.storage.local.remove(keysToRemove);
+        await this.storage.removeMany(keysToRemove);
       }
     } catch {
       // Ignore
