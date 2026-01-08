@@ -6,6 +6,8 @@ interface AccordionSectionProps {
   loading?: boolean;
   error?: boolean;
   defaultExpanded?: boolean;
+  expanded?: boolean; // Controlled mode
+  onToggle?: (expanded: boolean) => void; // Callback for controlled mode
   children: React.ReactNode;
 }
 
@@ -15,16 +17,24 @@ export function AccordionSection({
   loading = false,
   error = false,
   defaultExpanded = false,
+  expanded: controlledExpanded,
+  onToggle,
   children,
 }: AccordionSectionProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+  const isControlled = controlledExpanded !== undefined;
+  const expanded = isControlled ? controlledExpanded : internalExpanded;
   const contentRef = useRef<HTMLDivElement>(null);
   const headerId = `lex-header-${id}`;
   const panelId = `lex-panel-${id}`;
 
   const toggle = () => {
     if (!loading) {
-      setExpanded(!expanded);
+      if (isControlled && onToggle) {
+        onToggle(!expanded);
+      } else {
+        setInternalExpanded(!expanded);
+      }
     }
   };
 

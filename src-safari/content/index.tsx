@@ -1,14 +1,23 @@
 /**
  * Safari iOS Content Script Entry Point
  *
- * Handles word selection via long-press and displays definitions in a bottom sheet.
+ * Displays definitions in a bottom sheet when triggered via toolbar button.
  */
 import { createRoot, Root } from 'react-dom/client';
-import { LongPressHandler, LongPressResult } from './long-press-handler';
 import { BottomSheet } from './bottom-sheet';
-import { providerRegistry } from '@/providers/registry';
-import '@/providers'; // Register all providers
-import '@safari/styles/bottom-sheet.css';
+import { providerRegistry, registerAllProviders } from '@/providers';
+// Import CSS as string for shadow DOM injection
+import bottomSheetStyles from '@safari/styles/bottom-sheet.css?inline';
+
+// Debug: Log immediately when script loads
+console.log('[Lex Safari] Content script FILE LOADED');
+
+// Register all providers on load
+registerAllProviders();
+console.log('[Lex Safari] Providers registered');
+
+// Enable OpenAI by default for Safari (will show error if no API key)
+providerRegistry.updateConfig('openai', { enabled: true });
 
 // Unique ID for our shadow DOM host
 const HOST_ID = 'lex-dictionary-host';
@@ -17,8 +26,6 @@ const HOST_ID = 'lex-dictionary-host';
 let hostElement: HTMLElement | null = null;
 let shadowRoot: ShadowRoot | null = null;
 let reactRoot: Root | null = null;
-let longPressHandler: LongPressHandler | null = null;
-let isBottomSheetVisible = false;
 
 /**
  * Initialize the Safari content script.
@@ -29,16 +36,79 @@ async function init(): Promise<void> {
   // Load provider settings from storage
   await providerRegistry.loadFromStorage();
 
+  // Load settings from browser.storage (saved by popup)
+  await loadExtensionSettings();
+
   // Create the shadow DOM host element
   createHostElement();
 
-  // Set up long-press detection
-  setupLongPressHandler();
-
-  // Listen for messages from background script (Share Sheet)
+  // Listen for messages from background script
   setupMessageListener();
 
   console.log('[Lex Safari] Content script initialized');
+}
+
+/**
+ * Load settings from browser.storage (saved by popup).
+ */
+async function loadExtensionSettings(): Promise<void> {
+  try {
+    const browser = (globalThis as typeof globalThis & { browser?: typeof chrome }).browser;
+    if (!browser?.storage?.local) {
+      console.log('[Lex Safari] Browser storage not available');
+      return;
+    }
+
+    const result = await browser.storage.local.get('lex_extension_settings');
+    const settings = result?.lex_extension_settings as {
+      providers?: Record<string, boolean>;
+      apiKeys?: { openai?: string; mwCollegiate?: string; mwLearners?: string };
+    } | undefined;
+
+    console.log('[Lex Safari] Loaded extension settings:', settings);
+
+    if (settings) {
+      // Apply provider enabled/disabled settings
+      if (settings.providers) {
+        for (const [providerId, enabled] of Object.entries(settings.providers)) {
+          providerRegistry.updateConfig(providerId, { enabled });
+          console.log(`[Lex Safari] Provider ${providerId}: ${enabled ? 'enabled' : 'disabled'}`);
+        }
+      }
+
+      // Configure OpenAI provider with API key
+      if (settings.apiKeys?.openai) {
+        const openAIEnabled = settings.providers?.['openai'] ?? false;
+        providerRegistry.updateConfig('openai', {
+          enabled: openAIEnabled,
+          config: { apiKey: settings.apiKeys.openai }
+        });
+        console.log('[Lex Safari] OpenAI configured, enabled:', openAIEnabled);
+      }
+
+      // Configure MW Collegiate with its API key
+      if (settings.apiKeys?.mwCollegiate) {
+        providerRegistry.updateConfig('mw-collegiate', {
+          enabled: settings.providers?.['mw-collegiate'] ?? false,
+          config: { apiKey: settings.apiKeys.mwCollegiate }
+        });
+        console.log('[Lex Safari] MW Collegiate configured');
+      }
+
+      // Configure MW Learner's with its API key
+      if (settings.apiKeys?.mwLearners) {
+        providerRegistry.updateConfig('mw-learners', {
+          enabled: settings.providers?.['mw-learners'] ?? false,
+          config: { apiKey: settings.apiKeys.mwLearners }
+        });
+        console.log('[Lex Safari] MW Learners configured');
+      }
+    } else {
+      console.log('[Lex Safari] No settings found, using defaults');
+    }
+  } catch (error) {
+    console.error('[Lex Safari] Failed to load settings:', error);
+  }
 }
 
 /**
@@ -84,36 +154,14 @@ function createHostElement(): void {
 }
 
 /**
- * Set up the long-press handler.
- */
-function setupLongPressHandler(): void {
-  longPressHandler = new LongPressHandler(handleWordSelection);
-  longPressHandler.attach();
-}
-
-/**
- * Handle word selection from long-press.
- */
-function handleWordSelection(result: LongPressResult): void {
-  if (isBottomSheetVisible) {
-    // Close existing bottom sheet first
-    hideBottomSheet();
-    // Small delay before showing new one
-    setTimeout(() => {
-      showBottomSheet(result.word, result.context);
-    }, 100);
-  } else {
-    showBottomSheet(result.word, result.context);
-  }
-}
-
-/**
  * Show the bottom sheet with definitions.
  */
 function showBottomSheet(word: string, context?: string): void {
   if (!reactRoot || !hostElement) return;
 
-  isBottomSheetVisible = true;
+  // Clear the text selection to remove the ugly overlay
+  window.getSelection()?.removeAllRanges();
+
   hostElement.style.pointerEvents = 'auto';
 
   reactRoot.render(
@@ -127,15 +175,39 @@ function showBottomSheet(word: string, context?: string): void {
 function hideBottomSheet(): void {
   if (!reactRoot || !hostElement) return;
 
-  isBottomSheetVisible = false;
   hostElement.style.pointerEvents = 'none';
 
   reactRoot.render(null);
 }
 
 /**
+ * Get the currently selected text on the page.
+ */
+function getSelectedText(): string {
+  const selection = window.getSelection();
+  return selection?.toString().trim() || '';
+}
+
+/**
+ * Get context around the selected text.
+ */
+function getSelectionContext(): string | undefined {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return undefined;
+
+  const range = selection.getRangeAt(0);
+  const container = range.commonAncestorContainer;
+  const textNode = container.nodeType === Node.TEXT_NODE ? container : container.textContent;
+
+  if (!textNode) return undefined;
+
+  const fullText = typeof textNode === 'string' ? textNode : (textNode as Text).textContent || '';
+  // Limit context to 500 chars
+  return fullText.slice(0, 500);
+}
+
+/**
  * Set up message listener for communication with background script.
- * Used for Share Sheet integration.
  */
 function setupMessageListener(): void {
   // Safari uses browser.runtime.onMessage
@@ -143,160 +215,43 @@ function setupMessageListener(): void {
     browser?: { runtime?: typeof chrome.runtime };
   }).browser?.runtime;
 
+  console.log('[Lex Safari] Setting up message listener, browserRuntime:', !!browserRuntime);
+
   if (browserRuntime?.onMessage) {
-    browserRuntime.onMessage.addListener((message: unknown) => {
+    console.log('[Lex Safari] Adding message listener');
+    browserRuntime.onMessage.addListener((message: unknown, _sender: unknown, sendResponse: (response: unknown) => void) => {
       const msg = message as { type?: string; word?: string; context?: string };
-      if (msg.type === 'LOOKUP_WORD' && msg.word) {
-        showBottomSheet(msg.word, msg.context);
+      console.log('[Lex Safari] Received message:', msg);
+
+      if (msg.type === 'GET_SELECTED_TEXT') {
+        // Return the currently selected text
+        const selectedText = getSelectedText();
+        const context = getSelectionContext();
+        console.log('[Lex Safari] Selected text:', selectedText);
+        sendResponse({ selectedText, context });
+        return;
       }
+
+      if (msg.type === 'LOOKUP_WORD') {
+        console.log('[Lex Safari] Looking up word:', msg.word || '(no word - showing settings)');
+        showBottomSheet(msg.word || '', msg.context);
+        sendResponse({ success: true });
+        return;
+      }
+
+      sendResponse({ success: false });
     });
+  } else {
+    console.error('[Lex Safari] browserRuntime.onMessage not available!');
   }
 }
 
 /**
  * Get the CSS content for injection into shadow DOM.
- * In production, this would be bundled by Vite.
+ * Uses the imported CSS file directly.
  */
 function getStylesContent(): string {
-  // This will be replaced by actual CSS content during build
-  // For now, return a placeholder that loads from the bundled CSS
-  return `
-    /* Bottom Sheet Styles for iOS Safari */
-    :host {
-      --lex-bg-primary: #ffffff;
-      --lex-bg-secondary: #f8f9fa;
-      --lex-bg-hover: #e9ecef;
-      --lex-text-primary: #212529;
-      --lex-text-secondary: #6c757d;
-      --lex-text-muted: #adb5bd;
-      --lex-border: #dee2e6;
-      --lex-accent: #0066cc;
-      --lex-accent-hover: #0052a3;
-      --lex-error: #dc3545;
-      --lex-success: #28a745;
-      --lex-space-xs: 2px;
-      --lex-space-sm: 4px;
-      --lex-space-md: 8px;
-      --lex-space-lg: 12px;
-      --lex-space-xl: 16px;
-      --lex-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --lex-font-size-xs: 11px;
-      --lex-font-size-sm: 12px;
-      --lex-font-size-base: 14px;
-      --lex-font-size-lg: 16px;
-      --lex-font-size-xl: 18px;
-      --lex-transition-fast: 150ms ease-out;
-      --lex-transition-normal: 300ms ease-out;
-      --lex-shadow-lg: 0 -4px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      :host {
-        --lex-bg-primary: #1e1e1e;
-        --lex-bg-secondary: #2d2d2d;
-        --lex-bg-hover: #3d3d3d;
-        --lex-text-primary: #e4e4e4;
-        --lex-text-secondary: #a0a0a0;
-        --lex-text-muted: #6b6b6b;
-        --lex-border: #404040;
-        --lex-accent: #58a6ff;
-        --lex-accent-hover: #79b8ff;
-        --lex-shadow-lg: 0 -4px 20px rgba(0, 0, 0, 0.5);
-      }
-    }
-
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    .lex-bottom-sheet-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.4);
-      z-index: 2147483646;
-      transition: opacity var(--lex-transition-normal);
-    }
-
-    .lex-bottom-sheet {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      max-height: 70vh;
-      background: var(--lex-bg-primary);
-      border-radius: 16px 16px 0 0;
-      box-shadow: var(--lex-shadow-lg);
-      z-index: 2147483647;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      font-family: var(--lex-font-family);
-      font-size: var(--lex-font-size-base);
-      color: var(--lex-text-primary);
-      padding-bottom: env(safe-area-inset-bottom, 0);
-    }
-
-    .lex-bottom-sheet--dragging {
-      user-select: none;
-    }
-
-    .lex-bottom-sheet-handle {
-      display: flex;
-      justify-content: center;
-      padding: var(--lex-space-lg);
-      cursor: grab;
-      touch-action: none;
-    }
-
-    .lex-bottom-sheet-handle-bar {
-      width: 36px;
-      height: 5px;
-      background: var(--lex-border);
-      border-radius: 3px;
-    }
-
-    .lex-bottom-sheet-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 var(--lex-space-xl) var(--lex-space-md);
-      border-bottom: 1px solid var(--lex-border);
-    }
-
-    .lex-bottom-sheet-word {
-      font-size: var(--lex-font-size-xl);
-      font-weight: 600;
-      margin: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .lex-bottom-sheet-close {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border: none;
-      border-radius: 50%;
-      background: var(--lex-bg-secondary);
-      color: var(--lex-text-secondary);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .lex-bottom-sheet-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: var(--lex-space-md);
-      -webkit-overflow-scrolling: touch;
-    }
-
-    /* Additional styles would be included here from bottom-sheet.css */
-  `;
+  return bottomSheetStyles;
 }
 
 // Initialize when DOM is ready

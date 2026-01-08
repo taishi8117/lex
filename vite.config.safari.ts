@@ -9,6 +9,12 @@ import { resolve } from 'path';
 export default defineConfig({
   plugins: [react()],
 
+  // Use relative paths for extension compatibility
+  base: './',
+
+  // Use Safari-specific public directory
+  publicDir: 'src-safari/public',
+
   define: {
     // Platform detection for storage adapter
     __PLATFORM__: JSON.stringify('safari'),
@@ -23,13 +29,12 @@ export default defineConfig({
 
   build: {
     outDir: 'ios/Lex/Lex Extension/Resources',
-    emptyOutDir: false, // Don't clear manifest.json and other static files
+    emptyOutDir: true, // Clear and rebuild with correct manifest
 
     rollupOptions: {
       input: {
         content: resolve(__dirname, 'src-safari/content/index.tsx'),
         background: resolve(__dirname, 'src-safari/background/safari-background.ts'),
-        popup: resolve(__dirname, 'src-safari/popup/index.html'),
       },
       output: {
         entryFileNames: '[name].js',

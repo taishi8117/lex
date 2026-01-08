@@ -32,8 +32,8 @@ export const CACHE_CONFIG = {
 
 // Timeouts
 export const TIMEOUTS = {
-  LOOKUP: 5000, // 5 seconds per source
-  OPENAI: 10000, // 10 seconds for OpenAI (can be slower)
+  LOOKUP: 8000, // 8 seconds per source
+  OPENAI: 30000, // 30 seconds for OpenAI (mobile networks can be slow)
 } as const;
 
 // UI Constants

@@ -38,36 +38,17 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
 
         switch messageType {
         case "GET_API_KEYS":
-            // Retrieve API keys and provider settings from shared storage
-            let userDefaults = UserDefaults(suiteName: "group.net.sirius-lab.lex-dict.shared")
-            userDefaults?.synchronize() // Force sync
-
+            // Retrieve API keys from shared storage
+            let userDefaults = UserDefaults(suiteName: "group.com.lex.shared")
             let merriamWebsterKey = userDefaults?.string(forKey: "merriam_webster_api_key") ?? ""
             let openAIKey = userDefaults?.string(forKey: "openai_api_key") ?? ""
-
-            os_log(.default, "Lex Extension GET_API_KEYS - OpenAI key length: %d, MW key length: %d",
-                   openAIKey.count, merriamWebsterKey.count)
-
-            // Provider enabled states (default to true for most, false for jisho)
-            let providerSettings: [String: Bool] = [
-                "free-dictionary": userDefaults?.object(forKey: "provider_free-dictionary") as? Bool ?? true,
-                "mw-collegiate": userDefaults?.object(forKey: "provider_mw-collegiate") as? Bool ?? true,
-                "mw-learners": userDefaults?.object(forKey: "provider_mw-learners") as? Bool ?? true,
-                "wikipedia": userDefaults?.object(forKey: "provider_wikipedia") as? Bool ?? true,
-                "urban-dictionary": userDefaults?.object(forKey: "provider_urban-dictionary") as? Bool ?? true,
-                "jisho": userDefaults?.object(forKey: "provider_jisho") as? Bool ?? false,
-                "openai": userDefaults?.object(forKey: "provider_openai") as? Bool ?? true
-            ]
-
-            os_log(.default, "Lex Extension provider settings: %{public}@", String(describing: providerSettings))
 
             let response = NSExtensionItem()
             response.userInfo = [
                 SFExtensionMessageKey: [
                     "status": "ok",
                     "merriamWebsterKey": merriamWebsterKey,
-                    "openAIKey": openAIKey,
-                    "providerSettings": providerSettings
+                    "openAIKey": openAIKey
                 ]
             ]
             context.completeRequest(returningItems: [response], completionHandler: nil)
@@ -75,7 +56,7 @@ class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
         case "SAVE_SETTINGS":
             // Save settings from extension
             if let settings = message["settings"] as? [String: Any] {
-                let userDefaults = UserDefaults(suiteName: "group.net.sirius-lab.lex-dict.shared")
+                let userDefaults = UserDefaults(suiteName: "group.com.lex.shared")
                 for (key, value) in settings {
                     userDefaults?.set(value, forKey: key)
                 }

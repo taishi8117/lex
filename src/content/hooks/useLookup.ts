@@ -26,6 +26,14 @@ export function useLookup({ word, context }: UseLookupOptions): UseLookupResult 
 
   // Fetch definitions on mount or when word changes
   useEffect(() => {
+    // Skip lookup if no word provided
+    if (!word) {
+      setResults(null);
+      setLoading(false);
+      setLoadingIds(new Set());
+      return;
+    }
+
     let cancelled = false;
     const abortController = new AbortController();
 
