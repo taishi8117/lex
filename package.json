@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "watch": "vite build --watch"
+    "watch": "vite build --watch",
+    "build:safari": "tsc && vite build --config vite.config.safari.ts",
+    "watch:safari": "vite build --config vite.config.safari.ts --watch",
+    "ios:open": "open ios/Lex/Lex.xcodeproj"
   },
   "dependencies": {
     "react": "^18.2.0",

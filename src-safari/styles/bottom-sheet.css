@@ -1,0 +1,577 @@
+/* Bottom Sheet Styles for iOS Safari */
+
+/* Import shared popup styles for components */
+/* Note: This imports common component styles like accordion, definition card, etc. */
+
+/* CSS Custom Properties - Same as popup.css */
+:host {
+  /* Light theme (default) */
+  --lex-bg-primary: #ffffff;
+  --lex-bg-secondary: #f8f9fa;
+  --lex-bg-hover: #e9ecef;
+  --lex-text-primary: #212529;
+  --lex-text-secondary: #6c757d;
+  --lex-text-muted: #adb5bd;
+  --lex-border: #dee2e6;
+  --lex-accent: #0066cc;
+  --lex-accent-hover: #0052a3;
+  --lex-error: #dc3545;
+  --lex-success: #28a745;
+
+  /* Compact Spacing */
+  --lex-space-xs: 2px;
+  --lex-space-sm: 4px;
+  --lex-space-md: 8px;
+  --lex-space-lg: 12px;
+  --lex-space-xl: 16px;
+
+  /* Typography */
+  --lex-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --lex-font-size-xs: 11px;
+  --lex-font-size-sm: 12px;
+  --lex-font-size-base: 14px;
+  --lex-font-size-lg: 16px;
+  --lex-font-size-xl: 18px;
+
+  /* Animation */
+  --lex-transition-fast: 150ms ease-out;
+  --lex-transition-normal: 300ms ease-out;
+
+  /* Shadows */
+  --lex-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --lex-shadow-lg: 0 -4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :host {
+    --lex-bg-primary: #1e1e1e;
+    --lex-bg-secondary: #2d2d2d;
+    --lex-bg-hover: #3d3d3d;
+    --lex-text-primary: #e4e4e4;
+    --lex-text-secondary: #a0a0a0;
+    --lex-text-muted: #6b6b6b;
+    --lex-border: #404040;
+    --lex-accent: #58a6ff;
+    --lex-accent-hover: #79b8ff;
+    --lex-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --lex-shadow-lg: 0 -4px 20px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Bottom Sheet Backdrop */
+.lex-bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 2147483646;
+  transition: opacity var(--lex-transition-normal);
+}
+
+/* Bottom Sheet Container */
+.lex-bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  background: var(--lex-bg-primary);
+  border-radius: 16px 16px 0 0;
+  box-shadow: var(--lex-shadow-lg);
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--lex-font-family);
+  font-size: var(--lex-font-size-base);
+  color: var(--lex-text-primary);
+
+  /* Safe area for iPhone notch/home indicator */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.lex-bottom-sheet--dragging {
+  user-select: none;
+}
+
+/* Drag Handle */
+.lex-bottom-sheet-handle {
+  display: flex;
+  justify-content: center;
+  padding: var(--lex-space-lg);
+  cursor: grab;
+  touch-action: none;
+}
+
+.lex-bottom-sheet-handle:active {
+  cursor: grabbing;
+}
+
+.lex-bottom-sheet-handle-bar {
+  width: 36px;
+  height: 5px;
+  background: var(--lex-border);
+  border-radius: 3px;
+}
+
+/* Header */
+.lex-bottom-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--lex-space-xl) var(--lex-space-md);
+  border-bottom: 1px solid var(--lex-border);
+}
+
+.lex-bottom-sheet-word {
+  font-size: var(--lex-font-size-xl);
+  font-weight: 600;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lex-bottom-sheet-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--lex-bg-secondary);
+  color: var(--lex-text-secondary);
+  cursor: pointer;
+  transition: background var(--lex-transition-fast), color var(--lex-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lex-bottom-sheet-close:active {
+  background: var(--lex-bg-hover);
+  color: var(--lex-text-primary);
+}
+
+/* Content Area */
+.lex-bottom-sheet-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--lex-space-md);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* iOS-specific touch optimizations */
+@supports (-webkit-touch-callout: none) {
+  .lex-bottom-sheet-content {
+    /* Prevent iOS bounce effect inside sheet */
+    overscroll-behavior: contain;
+  }
+}
+
+/* Scrollbar styling */
+.lex-bottom-sheet-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.lex-bottom-sheet-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lex-bottom-sheet-content::-webkit-scrollbar-thumb {
+  background: var(--lex-border);
+  border-radius: 2px;
+}
+
+/* =========================================
+   Shared Component Styles (from popup.css)
+   ========================================= */
+
+/* Accordion - Compact */
+.lex-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lex-space-md);
+}
+
+.lex-accordion-section {
+  border: 1px solid var(--lex-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lex-accordion-section--error {
+  border-color: var(--lex-error);
+}
+
+.lex-accordion-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: var(--lex-space-md) var(--lex-space-lg);
+  border: none;
+  background: var(--lex-bg-secondary);
+  color: var(--lex-text-secondary);
+  font-family: inherit;
+  font-size: var(--lex-font-size-base);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--lex-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lex-accordion-header:active:not(:disabled) {
+  background: var(--lex-bg-hover);
+}
+
+.lex-accordion-header:disabled {
+  cursor: default;
+}
+
+.lex-accordion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--lex-space-md);
+  transition: transform var(--lex-transition-normal);
+  opacity: 0.6;
+}
+
+.lex-accordion-icon--expanded {
+  transform: rotate(90deg);
+}
+
+.lex-accordion-title {
+  flex: 1;
+  font-weight: 500;
+}
+
+.lex-accordion-content {
+  display: none;
+  padding: var(--lex-space-lg);
+  background: var(--lex-bg-primary);
+}
+
+.lex-accordion-content--expanded {
+  display: block;
+}
+
+/* Definition Card - Mobile optimized */
+.lex-definition-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lex-space-lg);
+}
+
+/* Pronunciations */
+.lex-pronunciations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lex-space-md);
+  align-items: center;
+}
+
+.lex-pronunciation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lex-space-sm);
+  padding: var(--lex-space-xs) var(--lex-space-md);
+  background: var(--lex-bg-secondary);
+  border-radius: 4px;
+  font-size: var(--lex-font-size-sm);
+  color: var(--lex-text-secondary);
+}
+
+.lex-pronunciation-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: var(--lex-accent);
+  color: white;
+  cursor: pointer;
+  transition: background var(--lex-transition-fast);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lex-pronunciation-play:active {
+  background: var(--lex-accent-hover);
+}
+
+/* Definitions */
+.lex-definitions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lex-space-lg);
+}
+
+.lex-definition-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lex-space-sm);
+}
+
+.lex-pos {
+  display: inline-block;
+  padding: var(--lex-space-xs) var(--lex-space-md);
+  background: var(--lex-accent);
+  color: white;
+  border-radius: 4px;
+  font-size: var(--lex-font-size-xs);
+  font-weight: 500;
+  font-style: italic;
+  width: fit-content;
+}
+
+.lex-definition-list {
+  margin: 0;
+  padding-left: var(--lex-space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lex-space-sm);
+}
+
+.lex-definition-item {
+  line-height: 1.5;
+  font-size: var(--lex-font-size-base);
+}
+
+.lex-definition-text {
+  display: block;
+}
+
+/* Examples */
+.lex-examples {
+  list-style: none;
+  padding: 0;
+  margin-top: var(--lex-space-sm);
+}
+
+.lex-example {
+  font-style: italic;
+  color: var(--lex-text-secondary);
+  font-size: var(--lex-font-size-sm);
+  padding-left: var(--lex-space-lg);
+  border-left: 2px solid var(--lex-border);
+  margin-top: var(--lex-space-sm);
+  line-height: 1.4;
+}
+
+/* Synonyms/Antonyms */
+.lex-synonyms,
+.lex-antonyms {
+  font-size: var(--lex-font-size-sm);
+  color: var(--lex-text-secondary);
+  margin-top: var(--lex-space-sm);
+}
+
+.lex-label {
+  font-weight: 500;
+  margin-right: var(--lex-space-sm);
+}
+
+/* Etymology - Hidden by default */
+.lex-etymology {
+  display: none;
+}
+
+/* Source Link */
+.lex-source-link {
+  display: inline-block;
+  font-size: var(--lex-font-size-sm);
+  color: var(--lex-accent);
+  text-decoration: none;
+  margin-top: var(--lex-space-md);
+  padding: var(--lex-space-sm) 0;
+}
+
+.lex-source-link:active {
+  text-decoration: underline;
+}
+
+/* Spinners */
+.lex-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--lex-border);
+  border-top-color: var(--lex-accent);
+  border-radius: 50%;
+  animation: lex-spin 0.8s linear infinite;
+  margin-left: auto;
+}
+
+.lex-spinner-small {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--lex-border);
+  border-top-color: var(--lex-accent);
+  border-radius: 50%;
+  animation: lex-spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes lex-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error Icon */
+.lex-error-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--lex-error);
+  color: white;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: auto;
+}
+
+/* Error Display */
+.lex-error {
+  display: flex;
+  align-items: center;
+  gap: var(--lex-space-md);
+  padding: var(--lex-space-md);
+  background: rgba(220, 53, 69, 0.1);
+  border-radius: 6px;
+  color: var(--lex-error);
+  font-size: var(--lex-font-size-sm);
+}
+
+.lex-error-retry {
+  border: none;
+  background: var(--lex-error);
+  color: white;
+  padding: var(--lex-space-sm) var(--lex-space-md);
+  border-radius: 4px;
+  font-size: var(--lex-font-size-sm);
+  cursor: pointer;
+  margin-left: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lex-error-retry:active {
+  background: #c82333;
+}
+
+/* No Results */
+.lex-no-results {
+  text-align: center;
+  padding: var(--lex-space-xl);
+  color: var(--lex-text-secondary);
+  font-size: var(--lex-font-size-base);
+}
+
+.lex-no-results-hint {
+  margin-top: var(--lex-space-md);
+  font-size: var(--lex-font-size-sm);
+}
+
+.lex-retry-all {
+  border: none;
+  background: none;
+  color: var(--lex-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Pending Sources */
+.lex-pending-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lex-space-md);
+  padding: var(--lex-space-md);
+  font-size: var(--lex-font-size-sm);
+  color: var(--lex-text-secondary);
+}
+
+.lex-pending-source {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--lex-space-sm);
+}
+
+/* Skeleton Loading */
+.lex-skeleton-container {
+  padding: var(--lex-space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lex-space-md);
+}
+
+.lex-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--lex-bg-secondary) 0%,
+    var(--lex-bg-hover) 50%,
+    var(--lex-bg-secondary) 100%
+  );
+  background-size: 200% 100%;
+  animation: lex-shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+.lex-skeleton--title {
+  height: 18px;
+  width: 40%;
+}
+
+.lex-skeleton--line {
+  height: 14px;
+  width: 100%;
+}
+
+.lex-skeleton--line-short {
+  width: 70%;
+}
+
+.lex-skeleton--header {
+  height: 36px;
+  width: 100%;
+}
+
+.lex-accordion-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lex-space-md);
+}
+
+.lex-accordion-skeleton-item {
+  padding: var(--lex-space-sm);
+}
+
+@keyframes lex-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* AI Loading */
+.lex-ai-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--lex-space-md);
+  padding: var(--lex-space-lg);
+  color: var(--lex-text-secondary);
+  font-size: var(--lex-font-size-base);
+}
